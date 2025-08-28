@@ -1,31 +1,55 @@
 using TelegramBotEngine;
 
-var builder = WebApplication.CreateBuilder(args);
+Task Worker = new Task(() => WorkerRun(args));
+Worker.Start();
 
-// Add data base context
-builder.Services.AddDbContext<TelegramBotEngineDbContext>();
+Task WebApp = new Task(() => WebApplicationRun(args));
+WebApp.Start();
 
-// Add services to the container.
-builder.Services.AddRazorPages();
+Task.WaitAll(Worker, WebApp);
 
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+static void WebApplicationRun(string[] args)
 {
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Add data base context
+    builder.Services.AddDbContext<TelegramBotEngineDbContext>();
+
+    // Add services to the container.
+    builder.Services.AddRazorPages();
+
+    var app = builder.Build();
+
+    // Configure the HTTP request pipeline.
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/Error");
+        // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseRouting();
+
+    app.UseAuthorization();
+
+    app.MapStaticAssets();
+    app.MapRazorPages()
+       .WithStaticAssets();
+
+    app.Run();
 }
 
-app.UseHttpsRedirection();
+static void WorkerRun(string[] args)
+{
+    var builder = Host.CreateApplicationBuilder(args);
+    builder.Services.AddHostedService<Worker>();
+    builder.Services.AddDbContext<TelegramBotEngineDbContext>();
 
-app.UseRouting();
+    var host = builder.Build();
+    host.Run();
+}
 
-app.UseAuthorization();
 
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
-
-app.Run();
+                

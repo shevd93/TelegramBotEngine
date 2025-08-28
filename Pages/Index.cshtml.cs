@@ -8,6 +8,7 @@ namespace TelegramBotEngine.Pages
     {
         private readonly ILogger<IndexModel> _logger;
         private readonly TelegramBotEngineDbContext _db;
+        private string ErrorMessage { get; set; } = string.Empty;
         public List<Bot> Bots { get; set; } = new List<Bot>();
 
         public IndexModel(ILogger<IndexModel> logger, TelegramBotEngineDbContext db)
@@ -25,7 +26,6 @@ namespace TelegramBotEngine.Pages
 
         public async Task<IActionResult> OnPostDeleteAsync(Guid id)
         {
-            var ErrorMessage = string.Empty;
             var bot = await _db.Bots.FindAsync(id);
 
             if (bot != null)
@@ -54,12 +54,11 @@ namespace TelegramBotEngine.Pages
                 ErrorMessage = string.Concat("Bot deletion failed. Bot not found. Id: ", id);
             }
 
-            return RedirectToNextPage(ErrorMessage);
+            return RedirectToNextPage();
         }
 
         public async Task<IActionResult> OnPostStart(Guid id)
         {
-            var ErrorMessage = string.Empty;
             var bot = await _db.Bots.FindAsync(id);
 
             if (bot != null)
@@ -84,12 +83,11 @@ namespace TelegramBotEngine.Pages
                 ErrorMessage = string.Concat("Bot start failed. Bot not found. Id: ", id);
             }
 
-            return RedirectToNextPage(ErrorMessage);
+            return RedirectToNextPage();
         }
 
         public async Task<IActionResult> OnPostStop(Guid id)
         {
-            var ErrorMessage = string.Empty;
             var bot = await _db.Bots.FindAsync(id);
 
             if (bot != null)
@@ -114,19 +112,19 @@ namespace TelegramBotEngine.Pages
                 ErrorMessage = string.Concat("Bot stop failed. Bot not found. Id: ", id);
             }
 
-            return RedirectToNextPage(ErrorMessage);
+            return RedirectToNextPage();
         }
 
-        private IActionResult RedirectToNextPage(string _errorMessage)
+        private IActionResult RedirectToNextPage()
         {
-            if (_errorMessage == string.Empty)
+            if (ErrorMessage == string.Empty)
             {
                 return RedirectToPage("/index");
             }
             else
             {
-                _logger.LogInformation(_errorMessage);
-                return RedirectToPage("/error", new { errorMessage = _errorMessage });
+                _logger.LogInformation(ErrorMessage);
+                return RedirectToPage("/error", new { errorMessage = ErrorMessage });
             }
         }
     }
