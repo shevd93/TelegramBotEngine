@@ -12,10 +12,7 @@ static void WebApplicationRun(string[] args)
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Add data base context
     builder.Services.AddDbContext<TelegramBotEngineDbContext>();
-
-    // Add services to the container.
     builder.Services.AddRazorPages();
 
     var app = builder.Build();
@@ -44,10 +41,12 @@ static void WebApplicationRun(string[] args)
 static void WorkerRun(string[] args)
 {
     var builder = Host.CreateApplicationBuilder(args);
+
     builder.Services.AddHostedService<Worker>();
     builder.Services.AddDbContext<TelegramBotEngineDbContext>();
 
     var host = builder.Build();
+
     host.Run();
 }
 

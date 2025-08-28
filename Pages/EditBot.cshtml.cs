@@ -82,7 +82,7 @@ namespace TelegramBotEngine.Pages
             }
             else
             {
-                _logger.LogWarning(ErrorMessage);
+                _logger.LogError(ErrorMessage);
                 return Page();
             }
 

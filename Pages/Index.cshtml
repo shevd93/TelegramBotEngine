@@ -10,9 +10,9 @@
     <thead>
         <tr>
             <th>Name</th>
-            <th>Token</th>
+            @* <th>Token</th> *@
             <th>Use Pulling</th>
-            <th>Webhook URL</th>
+            @* <th>Webhook URL</th> *@
             <th>Active</th>
             <th colspan="3">Actions</th>
         </tr>
@@ -22,9 +22,9 @@
         {
             <tr>
                 <td>@bot.Name</td>
-                <td>@bot.Token</td>
+                @* <td>@bot.Token</td> *@
                 <td>@(bot.UsePulling ? "Yes" : "No")</td>
-                <td>@bot.WebhookUrl</td>
+                @* <td>@bot.WebhookUrl</td> *@
                 <td>@(bot.IsActive ? "Yes" : "No")</td>
                 <td>
                     <form asp-page-handler="@(bot.IsActive ? "Stop" : "Start")" method="post">

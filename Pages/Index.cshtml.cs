@@ -123,7 +123,7 @@ namespace TelegramBotEngine.Pages
             }
             else
             {
-                _logger.LogInformation(ErrorMessage);
+                _logger.LogError(ErrorMessage);
                 return RedirectToPage("/error", new { errorMessage = ErrorMessage });
             }
         }

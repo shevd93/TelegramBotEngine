@@ -1,4 +1,7 @@
-﻿namespace TelegramBotEngine
+﻿using Telegram.BotAPI;
+using Telegram.BotAPI.GettingUpdates;
+
+namespace TelegramBotEngine
 {
     public class Worker : BackgroundService
     {
@@ -15,11 +18,36 @@
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+
+                var bots = _db.Bots.Where(b => b.IsActive && b.UsePulling).ToList();
+
+                foreach (var bot in bots)
                 {
-                    _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+
+                    var update = new List<Update>();
+
+                    IEnumerable<Update> updates = update;
+
+                    try
+                    {
+                        var telegramBotClient = new TelegramBotClient(bot.Token);
+
+                        updates = await telegramBotClient.GetUpdatesAsync();
+
+                        _logger.LogInformation("Bot {botId}: {bot.Name}. Updates received.", bot.Id, bot.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Bot {botId}: {bot.Name}. Error receiving updates.", bot.Id, bot.Name);
+                    }
+
+                    if (updates.Count() > 0)
+                    {
+                        Handlers.UpdateHandler(updates, bot, _db, _logger);
+                    }
                 }
-                await Task.Delay(1000, stoppingToken);
+                await Task.Delay(10000, stoppingToken);
             }
         }
     }
