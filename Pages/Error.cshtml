@@ -1,0 +1,21 @@
+﻿@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+@* <head>
+    <meta http-equiv="refresh" content="5;url=/index">
+</head> *@
+
+<h1 class="text-danger">Error.</h1>
+<h2 class="text-danger">An error occurred while processing your request.</h2>
+
+@if (Model.ShowRequestId)
+{
+    <p>
+        <strong>Request ID:</strong> <code>@Model.RequestId</code>
+        <div class="alert alert-dark" role="alert">@Model.ErrorMessage</div>
+
+    </p>
+}

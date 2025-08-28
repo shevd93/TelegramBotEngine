@@ -1,0 +1,32 @@
+﻿@page
+@model CreateBotModel
+@{
+    ViewData["Title"] = "Create a new bot";
+}
+
+<h1>Create a new bot</h1>
+<div class="container form-container mt-4">
+    <form method="post" asp-page-handler="CreateANewBot">
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control form-control-sm" placeholder="Enter name" asp-for="@Model.Bot.Name" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Token</label>
+            <input type="text" class="form-control form-control-sm" placeholder="bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" asp-for="@Model.Bot.Token" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Webhook URL</label>
+            <input type="text" class="form-control form-control-sm" placeholder="https://your-domain.com/your-webhook-path" asp-for="@Model.Bot.WebhookUrl">
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" asp-for="@Model.Bot.UsePulling">
+            <label class="form-check-label">Use pulling</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+    @if (Model.ErrorMessage != string.Empty)
+    {
+        <div class="alert alert-dark mt-3" role="alert">@Model.ErrorMessage</div>
+    }
+</div>
