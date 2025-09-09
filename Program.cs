@@ -1,5 +1,14 @@
 using TelegramBotEngine;
 
+var _db = new TelegramBotEngineDbContext();
+
+if (!_db.Database.CanConnect())
+{
+    _db.Database.EnsureCreated();
+}
+
+_db.Dispose();
+
 Task Worker = new Task(() => WorkerRun(args));
 Worker.Start();
 

@@ -1,0 +1,27 @@
+﻿@page
+@model TelegramBotEngine.Pages.BotModel
+@{
+    ViewData["Title"] = "Bot " + Model.BotName;
+}
+
+<h1>@Model.BotName</h1>
+<div class="container form-container mt-4">
+    <form method="post" asp-page-handler="SendMessage"> 
+        <input type="hidden" asp-for="@Model.BotId" value="@Model.BotId"/>
+        <div class="mb-3">
+            <select class="form-select" asp-for="@Model.SelectedChat" id="SelectedChat" required>
+                @{
+                    foreach (var chat in Model.Chats)
+                    {
+                        <option value="@chat.Id">@chat.Title @chat.FirstName</option>
+                    }
+                }
+            </select>
+          </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Message:</label>
+            <textarea class="form-control" id="TextMessage" name="TextMessage" rows="4" placeholder="Input text..." asp-for="@Model.TextMessage" required>@Model.TextMessage</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+</div>

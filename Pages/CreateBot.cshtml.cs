@@ -8,8 +8,6 @@ namespace TelegramBotEngine.Pages
     {
         private readonly ILogger<CreateBotModel> _logger;
         private readonly TelegramBotEngineDbContext _db;
-
-        [BindProperty]
         public string ErrorMessage { get; set; } = string.Empty;
 
         [BindProperty]

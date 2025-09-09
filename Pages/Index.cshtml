@@ -21,7 +21,7 @@
         @foreach (var bot in Model.Bots)
         {
             <tr>
-                <td>@bot.Name</td>
+                <td><a asp-page="/Bot" asp-route-id=@bot.Id>@bot.Name</a></td>
                 @* <td>@bot.Token</td> *@
                 <td>@(bot.UsePulling ? "Yes" : "No")</td>
                 @* <td>@bot.WebhookUrl</td> *@
