@@ -169,6 +169,59 @@ namespace TelegramBotEngine
                     _logger.LogInformation("Bot {botId}: {bot.Name}. Updated message. MessageId: {messageId}", bot.Id, bot.Name, message.MessageId);
 
                 }
+
+                if (message.Photo != null)
+                {
+                    foreach (var photoSize in message.Photo)
+                    {
+                        var dbPhoto = await _db.Photos.FirstOrDefaultAsync(p => p.FileId == photoSize.FileId && p.FileUniqueId == photoSize.FileUniqueId && p.MessageId == dbMessage.Id);
+                        
+                        if (dbPhoto == null)
+                        {
+                            dbPhoto = new Photo()
+                            {
+                                FileId = photoSize.FileId,
+                                FileUniqueId = photoSize.FileUniqueId,
+                                Width = photoSize.Width,
+                                Height = photoSize.Height,
+                                FileSize = photoSize.FileSize ?? 0,
+                                MessageId = dbMessage.Id
+                            };
+                           
+                            await _db.Photos.AddAsync(dbPhoto);
+                            await _db.SaveChangesAsync();
+
+                            _logger.LogInformation("Bot {botId}: {bot.Name}. New photo. FileId: {fileId}", bot.Id, bot.Name, photoSize.FileId);
+                        }
+                    }
+                }
+
+                if (message.Video != null)
+                {
+                    var video = message.Video;
+                    var dbVideo = await _db.Video.FirstOrDefaultAsync(v => v.FileId == video.FileId && v.FileUniqueId == video.FileUniqueId && v.MessageId == dbMessage.Id);
+                   
+                    if (dbVideo == null)
+                    {
+                        dbVideo = new Video()
+                        {
+                            FileId = video.FileId,
+                            FileUniqueId = video.FileUniqueId,
+                            FileName = video.FileName ?? string.Empty,
+                            Width = video.Width,
+                            Height = video.Height,
+                            Duration = video.Duration,
+                            FileSize = video.FileSize ?? 0,
+                            MimeType = video.MimeType ?? string.Empty,
+                            MessageId = dbMessage.Id
+                        };
+                        
+                        await _db.Video.AddAsync(dbVideo);
+                        await _db.SaveChangesAsync();
+
+                        _logger.LogInformation("Bot {botId}: {bot.Name}. New video. FileId: {fileId}", bot.Id, bot.Name, video.FileId);
+                    }
+                }
             }
 
             _logger.LogInformation("Bot {botId}: {bot.Name}. The changes have been written to the database.", bot.Id, bot.Name);
