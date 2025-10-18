@@ -14,7 +14,7 @@
             <th>Use Pulling</th>
             @* <th>Webhook URL</th> *@
             <th>Active</th>
-            <th colspan="3">Actions</th>
+            <th colspan="4">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -38,6 +38,12 @@
                     <form asp-page="EditBot" asp-page-handler="Edit" method="post">
                         <input type="hidden" name="id" value="@bot.Id" />
                         <button type="submit" class="btn btn-primary btn-sm" disabled="@bot.IsActive">Edit</button>
+                    </form>
+                </td>
+                <td>
+                    <form asp-page="CommandHandlers" asp-page-handler="CommandHandlers" method="post">
+                        <input type="hidden" name="id" value="@bot.Id" />
+                        <button type="submit" class="btn btn-primary btn-sm" disabled="@bot.IsActive">Command handlers</button>
                     </form>
                 </td>
                 <td>

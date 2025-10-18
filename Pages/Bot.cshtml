@@ -9,19 +9,35 @@
     <form method="post" asp-page-handler="SendMessage"> 
         <input type="hidden" asp-for="@Model.BotId" value="@Model.BotId"/>
         <div class="mb-3">
-            <select class="form-select" asp-for="@Model.SelectedChat" id="SelectedChat" required>
-                @{
-                    foreach (var chat in Model.Chats)
-                    {
-                        <option value="@chat.Id">@chat.Title @chat.FirstName</option>
-                    }
+            @{
+                var chats = Model.Chats;
+                bool hasChats = (chats.Count != 0);
+                if (hasChats)
+                {
+                    <select class="form-select" asp-for="@Model.SelectedChat" id="SelectedChat" required>
+                        @{
+                            foreach (var chat in chats)
+                            {
+                                <option value="@chat.Id">@chat.Title @chat.FirstName</option>
+                            }
+                        }
+                    </select>
                 }
-            </select>
-          </div>
-        <div class="mb-3">
-            <label for="description" class="form-label">Message:</label>
-            <textarea class="form-control" id="TextMessage" name="TextMessage" rows="4" placeholder="Input text..." asp-for="@Model.TextMessage" required>@Model.TextMessage</textarea>
+                else
+                {
+                    <div class="alert alert-dark mt-3" role="alert">No chats available. Start a conversation with your bot first.</div>
+                }
+            }
         </div>
-        <button type="submit" class="btn btn-primary">Send</button>
+        @{
+            if (hasChats)
+            {
+                <div class="mb-3">
+                    <label for="description" class="form-label">Message:</label>
+                    <textarea class="form-control" id="TextMessage" name="TextMessage" rows="4" placeholder="Input text..." asp-for="@Model.TextMessage" required>@Model.TextMessage</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send</button>
+            }
+        }
     </form>
 </div>

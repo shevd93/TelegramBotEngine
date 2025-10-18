@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Telegram.BotAPI;
+using Telegram.BotAPI.AvailableMethods;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine.Pages
@@ -34,7 +36,9 @@ namespace TelegramBotEngine.Pages
             {
                 return NotFound();
             }
+            
             Bot = existingBot;
+
             return Page();
         }
 

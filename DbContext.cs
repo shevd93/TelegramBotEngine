@@ -12,6 +12,7 @@ namespace TelegramBotEngine
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<Photo> Photos => Set<Photo>();
         public DbSet<Video> Video => Set<Video>();
+        public DbSet<Handler> Handlers => Set<Handler>();   
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
             => optionsBuilder.UseSqlServer("Data Source=.;Initial Catalog=TelegramBotEngine;Integrated Security=true;TrustServerCertificate=True; Encrypt=False;");
@@ -23,6 +24,7 @@ namespace TelegramBotEngine
             modelBuilder.Entity<Message>().HasIndex(m => new { m.ExternalId, m.FromUserId, m.ChatId});
             modelBuilder.Entity<Photo>().HasIndex(p => new { p.FileId, p.FileUniqueId, p.MessageId });
             modelBuilder.Entity<Video>().HasIndex(v => new { v.FileId, v.FileUniqueId, v.MessageId });
+            modelBuilder.Entity<Handler>().HasIndex(h => new { h.ExternalId, h.BotId });
         }
     }
 }
