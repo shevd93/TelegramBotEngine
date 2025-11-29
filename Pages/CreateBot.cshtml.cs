@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine.Pages
@@ -8,10 +11,11 @@ namespace TelegramBotEngine.Pages
     {
         private readonly ILogger<CreateBotModel> _logger;
         private readonly TelegramBotEngineDbContext _db;
-        public string ErrorMessage { get; set; } = string.Empty;
 
         [BindProperty]
-        public Bot Bot { get; set; } = new Bot();
+        public BotInputModel Bot { get; set; } = new();
+        [BindProperty]
+        public string? ErrorMessage { get; set; }
 
         public CreateBotModel(ILogger<CreateBotModel> logger, TelegramBotEngineDbContext db)
         {
@@ -21,45 +25,73 @@ namespace TelegramBotEngine.Pages
 
         public void OnGet()
         {
-            _logger.LogInformation("The new bot creation page has been loaded");
+            _logger.LogInformation("The bot creation page has been loaded..");
         }
 
-        public async Task<IActionResult> OnPostCreateANewBot()
+        public async Task<IActionResult> OnPostAsync()
         {
-            Bot.Name = Bot.Name ?? "";
-            Bot.Token = Bot.Token ?? "";
-            Bot.WebhookUrl = Bot.WebhookUrl ?? "";
-            Bot.IsActive = false;
-
-            var bots = (_db.Bots.Where(b => b.Name == Bot.Name || b.Token == Bot.Token).ToList());
-
-            if (bots.Count > 0)
+            if (!ModelState.IsValid)
             {
-                ErrorMessage = "A bot with the same name or token already exists.";
-            }
-            else
-            {
-                _db.Bots.Add(Bot);
-
-                try
-                {
-                    await _db.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    ErrorMessage = string.Concat("Error creating new bot: ", ex.Message);
-                }
-            }
-
-            if (ErrorMessage == string.Empty)
-            {
-                return RedirectToPage("/index");
-            }
-            else
-            {
-                _logger.LogError(ErrorMessage);
                 return Page();
-            }   
+            }
+
+            Bot.Name = Bot.Name.Trim();
+            Bot.Token = Bot.Token.Trim();
+            Bot.WebhookUrl = Bot.WebhookUrl?.Trim();
+
+            bool exists = await _db.Bots
+                .AnyAsync(b => b.Name == Bot.Name || b.Token == Bot.Token);
+
+            if (exists)
+            {
+                ModelState.AddModelError(string.Empty, "A bot with this name or token already exists..");
+                return Page();
+            }
+
+            var newBot = new Bot
+            {
+                Id = Guid.NewGuid(),
+                Name = Bot.Name,
+                Token = Bot.Token,
+                WebhookUrl = string.IsNullOrWhiteSpace(Bot.WebhookUrl) ? null : Bot.WebhookUrl,
+                IsActive = false,
+                UsePulling = Bot.UsePulling
+            };
+
+            _db.Bots.Add(newBot);
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("New bot created: {BotName} (ID: {BotId})", newBot.Name, newBot.Id);
+                TempData["SuccessMessage"] = $"Bot «{newBot.Name}» successfully created!";
+                return RedirectToPage("/Index");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save new bot to database");
+                ModelState.AddModelError(string.Empty, "Failed to save the bot. Try again later..");
+                return Page();
+            }
+        }
+
+        public class BotInputModel
+        {
+            [Required(ErrorMessage = "Bot name is required")]
+            [StringLength(100, MinimumLength = 2, ErrorMessage = "The name must contain between 2 and 100 characters.")]
+            [Display(Name = "Bot name")]
+            public string Name { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "Token required")]
+            [Display(Name = "Bot token")]
+            public string Token { get; set; } = string.Empty;
+
+            [Url(ErrorMessage = "Please enter a valid UR")]
+            [Display(Name = "Webhook URL (optional)")]
+            public string? WebhookUrl { get; set; }
+
+            [Display(Name = "Use polling instead of webhook")]
+            public bool UsePulling { get; set; } = true;
         }
     }
 }

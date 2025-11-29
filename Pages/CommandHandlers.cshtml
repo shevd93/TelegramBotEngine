@@ -33,7 +33,8 @@
                 </td>
                 <td>
                     <form asp-page-handler="DeleteHandler" method="post">
-                        <input type="hidden" name="id" value="@handler.Id" />
+                        <input type="hidden" name="id" value="@handler.Id"/>
+                        <input type="hidden" name="botid" value="@Model.BotId"/>
                         <button type="submit" class="btn btn-sm" style="background-color: red; border-color: #b02a37">Delete</button>
                     </form>
                 </td>

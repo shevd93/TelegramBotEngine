@@ -14,7 +14,7 @@ namespace TelegramBotEngine
         {
             int lastUpdateId = 0;
 
-            // Кэшируем чаты и пользователей в памяти за один проход
+            // We cache chats and users in memory in one pass.
             var chatCache = new Dictionary<long, Chat>();
             var userCache = new Dictionary<long, FromUser>();
 
@@ -29,7 +29,7 @@ namespace TelegramBotEngine
                 if (message.Chat == null || message.From == null)
                     continue;
 
-                // ── Работа с Chat ─────────────────────────────────────
+                // ── Working with Chat ─────────────────────────────────────
                 Chat chat;
                 if (!chatCache.TryGetValue(message.Chat.Id, out chat!))
                 {
@@ -51,7 +51,7 @@ namespace TelegramBotEngine
                     }
                     else
                     {
-                        // Обновляем только если что-то реально изменилось
+                        // We update only if something has actually changed.
                         bool chatChanged = chat.Type != message.Chat.Type.ToString() ||
                                           chat.Title != (message.Chat.Title ?? string.Empty) ||
                                           chat.Username != (message.Chat.Username ?? string.Empty) ||
@@ -70,7 +70,7 @@ namespace TelegramBotEngine
                     chatCache[message.Chat.Id] = chat;
                 }
 
-                // ── Работа с FromUser ─────────────────────────────────
+                // ── Working with FromUser ─────────────────────────────────
                 FromUser fromUser;
                 if (!userCache.TryGetValue(message.From.Id, out fromUser!))
                 {
@@ -106,7 +106,7 @@ namespace TelegramBotEngine
                     userCache[message.From.Id] = fromUser;
                 }
 
-                // ── Работа с Message ──────────────────────────────────
+                // ── Working with Message ──────────────────────────────────
                 var dbMessage = await db.Messages
                     .FirstOrDefaultAsync(m => m.ExternalId == message.MessageId && m.ChatId == chat.Id);
 
@@ -123,18 +123,18 @@ namespace TelegramBotEngine
                         Processed = false
                     };
                     db.Messages.Add(dbMessage);
-                    logger.LogInformation("Bot {BotId} — Новое сообщение {MessageId}", bot.Id, message.MessageId);
+                    logger.LogInformation("Bot {BotId} — New message {MessageId}", bot.Id, message.MessageId);
                 }
                 else
                 {
-                    // Обновление edited message
+                    // Update edited messag
                     dbMessage.Date = DateTimeOffset.FromUnixTimeSeconds(message.Date).UtcDateTime;
                     dbMessage.Text = message.Text ?? string.Empty;
                     dbMessage.Caption = message.Caption ?? string.Empty;
-                    logger.LogInformation("Bot {BotId} — Обновлено сообщение {MessageId}", bot.Id, message.MessageId);
+                    logger.LogInformation("Bot {BotId} — Message {MessageId} updated (edited)", bot.Id, message.MessageId);
                 }
 
-                // ── Фото ──────────────────────────────────────────────
+                // ── Photo ──────────────────────────────────────────────
                 if (message.Photo != null)
                 {
                     foreach (var photoSize in message.Photo)
@@ -159,7 +159,7 @@ namespace TelegramBotEngine
                     }
                 }
 
-                // ── Видео ─────────────────────────────────────────────
+                // ── Video ─────────────────────────────────────────────
                 if (message.Video != null)
                 {
                     var video = message.Video;
@@ -189,12 +189,11 @@ namespace TelegramBotEngine
             try
             {
                 await db.SaveChangesAsync();
-                logger.LogInformation("Bot {BotId}: {BotName} — все изменения ({Count} обновлений) сохранены в БД",
-                    bot.Id, bot.Name, updates.Count());
+                logger.LogInformation("Bot {BotId}: {BotName} — All changes saved ({Count} update(s) processed)", bot.Id, bot.Name, updates.Count());
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Bot {BotId}: ошибка при сохранении в БД", bot.Id);
+                logger.LogError(ex, "Bot {BotId}: Failed to save changes to database", bot.Id);
             }
 
             return lastUpdateId;

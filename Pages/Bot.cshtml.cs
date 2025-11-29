@@ -1,101 +1,85 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using TelegramBotEngine.Models;
+using Microsoft.EntityFrameworkCore;
 using Telegram.BotAPI;
+using Telegram.BotAPI.AvailableMethods;
+using TelegramBotEngine.Models;
 
-namespace TelegramBotEngine.Pages
+namespace TelegramBotEngine.Pages;
+
+public class BotModel(
+    ILogger<BotModel> logger,
+    TelegramBotEngineDbContext db) : PageModel
 {
-    public class BotModel : PageModel
+    [BindProperty(SupportsGet = true)]
+    public Guid BotId { get; set; }
+    [BindProperty(SupportsGet = true)]
+    public Guid? SelectedChat { get; set; }
+    [BindProperty]
+    public string TextMessage { get; set; } = string.Empty;
+    public string BotName { get; private set; } = string.Empty;
+    public IReadOnlyList<Chat> Chats { get; private set; } = [];
+
+    public IActionResult OnGet(Guid id)
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly TelegramBotEngineDbContext _db;
-        [BindProperty]
-        public Guid BotId { get; set; }
-        public string BotName { get; set; } = string.Empty;
-        public List<Chat> Chats { get; set; } = new List<Chat>();
-        [BindProperty]
-        public string TextMessage { get; set; } = string.Empty;
-        [BindProperty]
-        public Guid SelectedChat { get; set; }
-        
-        public BotModel(ILogger<Worker> logger, TelegramBotEngineDbContext db)
-        {
-            _logger = logger;
-            _db = db;
-        }
+        BotId = id;
 
-        public void OnGet(Guid id, Guid? selectedChat)
-        {
-            BotId = id;
+        var bot = db.Bots.Find(BotId);
 
-            if (selectedChat != null)
-            {
-                SelectedChat = selectedChat.Value;
-            }
+        if (bot is null)
+            return RedirectToError("Bot not found");
 
-            var bot = _db.Bots.Find(id);
+        BotName = bot.Name;
+        Chats = db.Chats
+            .Where(c => c.BotId == BotId)
+            .OrderBy(c => c.Title)
+            .AsNoTracking()
+            .ToList();
 
-            if (bot is null)
-            {
-                RedirectToPage("/Error", new { errorMessage = "Bot not found" });
-            }
-            else
-            {
-                BotName = bot.Name;
-
-                var chats = _db.Chats.Where(c => c.BotId == id).ToList();
-
-                if (chats.Count > 0)
-                {
-                    Chats = chats;
-                }
-            }
-        }
-
-        async public Task<IActionResult> OnPostSendMessage()
-        {
-            if (SelectedChat == Guid.Empty)
-            {
-                return RedirectToPage("/Error", new { errorMessage = "Chat not selected" });
-            }
-            else if (TextMessage?.Trim().Length == 0 || TextMessage == null)
-            {
-                return RedirectToPage("/Error", new { errorMessage = "Message is empty" });
-            }
-
-            var chat = _db.Chats.FirstOrDefault(c => c.Id == SelectedChat);
-
-            if (chat is null)
-            {
-                return RedirectToPage("/Error", new { errorMessage = "Chat not found" });
-            }
-
-            var bot = _db.Bots.FirstOrDefault(b => b.Id == BotId);
-
-            if (bot is null)
-            {
-                return RedirectToPage("/Error", new { errorMessage = "Bot not found" });
-            }
-
-            var telegramBotClient = new TelegramBotClient(bot.Token);
-            
-            var args = new Dictionary<string, object?>
-            {
-                { "chat_id", chat.ExternalId },
-                { "parse_mode", "HTML" },
-                { "text", TextMessage }
-            };
-
-            try
-            {
-                await telegramBotClient.CallMethodAsync<Message>("sendMessage", args);
-            }
-            catch (Exception ex)
-            {
-                return RedirectToPage("/Error", new { errorMessage = ex.Message });
-            }
-
-            return RedirectToPage("/Bot", new { id = BotId, selectedChat = SelectedChat });
-        }
+        return Page();
     }
+    public async Task<IActionResult> OnPostSendMessageAsync()
+    {
+        if (SelectedChat is null || SelectedChat == Guid.Empty)
+            return RedirectToError("No chat selected");
+
+        if (string.IsNullOrWhiteSpace(TextMessage))
+            return RedirectToError("Message text is empty");
+
+        var chat = await db.Chats
+            .FirstOrDefaultAsync(c => c.Id == SelectedChat && c.BotId == BotId);
+
+        if (chat is null)
+            return RedirectToError("Chat not found");
+
+        var bot = await db.Bots
+            .Where(b => b.Id == BotId)
+            .Select(b => new { b.Token, b.Name })
+            .FirstOrDefaultAsync();
+
+        if (bot is null)
+            return RedirectToError("Bot not found");
+
+        var telegramClient = new TelegramBotClient(bot.Token);
+
+        try
+        {
+            await telegramClient.SendMessageAsync(
+                chatId: chat.ExternalId,
+                text: TextMessage,
+                parseMode: "HTML");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send message to chat {ChatId} from bot {BotName}", chat.ExternalId, bot.Name);
+
+            return RedirectToError($"Failed to send message: {ex.Message}");
+        }
+
+        TempData["Success"] = "Message sent successfully!";
+
+        return RedirectToPage(new { id = BotId, selectedChat = SelectedChat });
+    }
+    private IActionResult RedirectToError(string message) =>
+        RedirectToPage("/Error", new { errorMessage = message });
 }

@@ -29,14 +29,13 @@ namespace TelegramBotEngine
                         .Where(b => b.IsActive && b.UsePulling)
                         .ToListAsync(stoppingToken);
 
-                    // Запускаем обработку всех ботов параллельно (но безопасно)
                     var tasks = bots.Select(bot => ProcessBotAsync(bot, stoppingToken)).ToArray();
 
                     await Task.WhenAll(tasks);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Ошибка в основном цикле Worker");
+                    _logger.LogError(ex, "Error in Worker main loop");
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
@@ -45,7 +44,6 @@ namespace TelegramBotEngine
 
         private async Task ProcessBotAsync(Bot bot, CancellationToken ct)
         {
-            // Каждый бот — в своём собственном scope → свой DbContext → нет конфликтов
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<TelegramBotEngineDbContext>();
 
@@ -64,11 +62,10 @@ namespace TelegramBotEngine
                     return;
                 }
 
-                _logger.LogInformation("Bot {BotId}: {BotName}. Получено {Count} обновлений", bot.Id, bot.Name, updates.Count());
+                _logger.LogInformation("Bot {BotId}: {BotName}. Received {Count} update(s)", bot.Id, bot.Name, updates.Count());
 
                 int newLastUpdateId = await Handlers.UpdateHandler(updates, bot, db, _logger);
 
-                // Обновляем или создаём запись о последнем update_id
                 if (lastUpdate != null)
                 {
                     lastUpdate.LastUpdateId = newLastUpdateId;
@@ -86,7 +83,7 @@ namespace TelegramBotEngine
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка обработки бота {BotId}: {BotName}", bot.Id, bot.Name);
+                _logger.LogError(ex, "Error processing bot {BotId}: {BotName}", bot.Id, bot.Name);
             }
         }
     }
