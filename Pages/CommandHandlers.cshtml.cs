@@ -11,9 +11,9 @@ namespace TelegramBotEngine.Pages
 
         [BindProperty]
         public string ErrorMessage { get; set; } = string.Empty;
-
-        [BindProperty]
-        public Bot Bot { get; set; } = new Bot();
+        public Guid BotId { get; set; } = Guid.Empty;
+        public string BotName { get; set; } = string.Empty;
+        public List<Handler> Handlers { get; set; } = new List<Handler>();
 
         public CommandHandlersModel(ILogger<CreateBotModel> logger, TelegramBotEngineDbContext db)
         {
@@ -21,23 +21,67 @@ namespace TelegramBotEngine.Pages
             _db = db;
         }
 
-        public IActionResult OnGet()
+        public IActionResult OnGet(Guid? id)
         {
-            return RedirectToPage("/index");
+            if (id == null)
+            {
+                return RedirectToPage("/index");
+            }
+            else
+            {
+                BotId = id.Value;
+                var existingBot = _db.Bots.Find(BotId);
+
+                if (existingBot == null)
+                {
+                    ErrorMessage = "Bot not found.";
+                    _logger.LogError("Bot with ID: {BotId} not found.", id);
+                    return NotFound();
+                }
+
+                BotName = existingBot.Name;
+
+                Handlers = _db.Handlers
+                    .Where(h => h.BotId == BotId)
+                    .OrderBy(h => h.ExternalId)
+                    .ToList();
+
+                return Page();
+            }
         }
 
-        public IActionResult OnPostCommandHandlers(Guid id)
+        public async Task<IActionResult> OnPostDeleteHandler(Guid id)
         {
-            var existingBot = _db.Bots.Find(id);
+            var handler = await _db.Handlers.FindAsync(id);
 
-            if (existingBot == null)
+            if (handler != null)
             {
-                return NotFound();
+                _db.Handlers.Remove(handler);
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    _logger.LogInformation("Handler deleted. Id: {Id}", handler.Id);
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = string.Concat("Handler deletion logging failed. Id: ", handler.Id, ". Error: ", ex.Message);
+                    _logger.LogError(ErrorMessage);
+                }
+            }
+            else
+            {
+                ErrorMessage = string.Concat("Handler deletion failed. Handler not found. Id: ", id);
+                _logger.LogError(ErrorMessage);
             }
 
-            Bot = existingBot;
-
-            return Page();
+            if (ErrorMessage == string.Empty)
+            {
+                return RedirectToPage("/CommandHandlers",  new { id = handler!.BotId });
+            }
+            else
+            {
+                return Page();
+            }
 
         }
     }

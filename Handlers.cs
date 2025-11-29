@@ -6,179 +6,147 @@ namespace TelegramBotEngine
 {
     public static class Handlers
     {
-        async public static Task<int> UpdateHandler(IEnumerable<Update> updates, Bot bot, TelegramBotEngineDbContext _db, ILogger _logger)
+        public static async Task<int> UpdateHandler(
+            IEnumerable<Update> updates,
+            Bot bot,
+            TelegramBotEngineDbContext db,
+            ILogger logger)
         {
-            var updateId = 0;
-            List<Chat> chats = [];
-            List<FromUser> fromUsers = [];
+            int lastUpdateId = 0;
+
+            // Кэшируем чаты и пользователей в памяти за один проход
+            var chatCache = new Dictionary<long, Chat>();
+            var userCache = new Dictionary<long, FromUser>();
 
             foreach (var update in updates)
             {
-               updateId = update.UpdateId;
+                lastUpdateId = update.UpdateId;
 
-               var isEditing = false;
+                if (update.Message == null && update.EditedMessage == null)
+                    continue;
 
-               if (update.Message == null && update.EditedMessage == null)
-               {
-                   continue;
-               }
+                var message = update.EditedMessage ?? update.Message!;
+                if (message.Chat == null || message.From == null)
+                    continue;
 
-               isEditing = (update.EditedMessage != null);
-
-               var message = isEditing ? update.EditedMessage : update.Message;
-
-               Chat? chat = null;
-
-                if (message.Chat != null)
+                // ── Работа с Chat ─────────────────────────────────────
+                Chat chat;
+                if (!chatCache.TryGetValue(message.Chat.Id, out chat!))
                 {
-                    var messageChat = message.Chat;
-
-                    chat = chats.FirstOrDefault(c => c.ExternalId == messageChat.Id && c.BotId == bot.Id);
+                    chat = await db.Chats.FirstOrDefaultAsync(c => c.ExternalId == message.Chat.Id && c.BotId == bot.Id);
 
                     if (chat == null)
                     {
-                        chat = await _db.Chats.FirstOrDefaultAsync(c => c.ExternalId == messageChat.Id && c.BotId == bot.Id);
-
-                        if (chat == null)
+                        chat = new Chat
                         {
-                            chat = new Chat()
-                            {
-                                ExternalId = messageChat.Id,
-                                BotId = bot.Id,
-                                Type = messageChat.Type.ToString(),
-                                Title = messageChat.Title ?? string.Empty,
-                                Username = messageChat.Username ?? string.Empty,
-                                FirstName = messageChat.FirstName ?? string.Empty,
-                                LastName = messageChat.LastName ?? string.Empty
-                            };
-
-                            await _db.Chats.AddAsync(chat);
-
-                            await _db.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            if (chat.Type != messageChat.Type.ToString() ||
-                                chat.Title != (messageChat.Title ?? string.Empty) ||
-                                chat.Username != (messageChat.Username ?? string.Empty) ||
-                                chat.FirstName != (messageChat.FirstName ?? string.Empty) ||
-                                chat.LastName != (messageChat.LastName ?? string.Empty))
-                            {
-                                chat.Type = messageChat.Type.ToString();
-                                chat.Title = messageChat.Title ?? string.Empty;
-                                chat.Username = messageChat.Username ?? string.Empty;
-                                chat.FirstName = messageChat.FirstName ?? string.Empty;
-                                chat.LastName = messageChat.LastName ?? string.Empty;
-                                
-                                _db.Chats.Update(chat);
-                               
-                                await _db.SaveChangesAsync();
-                            }
-                        }
-
-                        chats.Add(chat);
+                            ExternalId = message.Chat.Id,
+                            BotId = bot.Id,
+                            Type = message.Chat.Type.ToString(),
+                            Title = message.Chat.Title ?? string.Empty,
+                            Username = message.Chat.Username ?? string.Empty,
+                            FirstName = message.Chat.FirstName ?? string.Empty,
+                            LastName = message.Chat.LastName ?? string.Empty
+                        };
+                        db.Chats.Add(chat);
                     }
+                    else
+                    {
+                        // Обновляем только если что-то реально изменилось
+                        bool chatChanged = chat.Type != message.Chat.Type.ToString() ||
+                                          chat.Title != (message.Chat.Title ?? string.Empty) ||
+                                          chat.Username != (message.Chat.Username ?? string.Empty) ||
+                                          chat.FirstName != (message.Chat.FirstName ?? string.Empty) ||
+                                          chat.LastName != (message.Chat.LastName ?? string.Empty);
+
+                        if (chatChanged)
+                        {
+                            chat.Type = message.Chat.Type.ToString();
+                            chat.Title = message.Chat.Title ?? string.Empty;
+                            chat.Username = message.Chat.Username ?? string.Empty;
+                            chat.FirstName = message.Chat.FirstName ?? string.Empty;
+                            chat.LastName = message.Chat.LastName ?? string.Empty;
+                        }
+                    }
+                    chatCache[message.Chat.Id] = chat;
                 }
 
-                FromUser? fromUser = null;
-
-                if (message.From != null)
+                // ── Работа с FromUser ─────────────────────────────────
+                FromUser fromUser;
+                if (!userCache.TryGetValue(message.From.Id, out fromUser!))
                 {
-                    var from = message.From;
-
-                    fromUser = fromUsers.FirstOrDefault(f => f.ExternalId == from.Id);
+                    fromUser = await db.FromUsers.FirstOrDefaultAsync(u => u.ExternalId == message.From.Id);
 
                     if (fromUser == null)
                     {
-                        fromUser = await _db.FromUsers.FirstOrDefaultAsync(f => f.ExternalId == message.From.Id);
-
-                        if (fromUser == null)
+                        fromUser = new FromUser
                         {
-                            fromUser = new FromUser()
-                            {
-                                ExternalId = from.Id,
-                                FirstName = from.FirstName ?? string.Empty,
-                                LastName = from.LastName ?? string.Empty,
-                                Username = from.Username ?? string.Empty,
-                                IsBot = from.IsBot
-                            };
-
-                            await _db.FromUsers.AddAsync(fromUser);
-
-                            await _db.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            if (fromUser.FirstName != (from.FirstName ?? string.Empty) ||
-                                fromUser.LastName != (from.LastName ?? string.Empty) ||
-                                fromUser.Username != (from.Username ?? string.Empty) ||
-                                fromUser.IsBot != from.IsBot)
-                            {
-                                fromUser.FirstName = from.FirstName ?? string.Empty;
-                                fromUser.LastName = from.LastName ?? string.Empty;
-                                fromUser.Username = from.Username ?? string.Empty;
-                                fromUser.IsBot = from.IsBot;
-                                
-                                _db.FromUsers.Update(fromUser);
-
-                                await _db.SaveChangesAsync();
-                            }
-                        }
-
-                        fromUsers.Add(fromUser);
+                            ExternalId = message.From.Id,
+                            FirstName = message.From.FirstName ?? string.Empty,
+                            LastName = message.From.LastName ?? string.Empty,
+                            Username = message.From.Username ?? string.Empty,
+                            IsBot = message.From.IsBot
+                        };
+                        db.FromUsers.Add(fromUser);
                     }
+                    else
+                    {
+                        bool userChanged = fromUser.FirstName != (message.From.FirstName ?? string.Empty) ||
+                                          fromUser.LastName != (message.From.LastName ?? string.Empty) ||
+                                          fromUser.Username != (message.From.Username ?? string.Empty) ||
+                                          fromUser.IsBot != message.From.IsBot;
+
+                        if (userChanged)
+                        {
+                            fromUser.FirstName = message.From.FirstName ?? string.Empty;
+                            fromUser.LastName = message.From.LastName ?? string.Empty;
+                            fromUser.Username = message.From.Username ?? string.Empty;
+                            fromUser.IsBot = message.From.IsBot;
+                        }
+                    }
+                    userCache[message.From.Id] = fromUser;
                 }
 
-                if (chat == null || fromUser == null)
-                {
-                    _logger.LogWarning("Bot {botId}: {bot.Name}. The chat or user is null. MessageId: {messageId}", bot.Id, bot.Name, message.MessageId);
-                    continue;
-                }
-
-                var dbMessage = await _db.Messages.FirstOrDefaultAsync(m => m.ExternalId == message.MessageId && m.ChatId == chat.Id);
+                // ── Работа с Message ──────────────────────────────────
+                var dbMessage = await db.Messages
+                    .FirstOrDefaultAsync(m => m.ExternalId == message.MessageId && m.ChatId == chat.Id);
 
                 if (dbMessage == null)
                 {
-                    dbMessage = new Message()
+                    dbMessage = new Message
                     {
                         ExternalId = message.MessageId,
+                        ChatId = chat.Id,
                         FromUserId = fromUser.Id,
                         Date = DateTimeOffset.FromUnixTimeSeconds(message.Date).UtcDateTime,
-                        ChatId = chat.Id,
                         Text = message.Text ?? string.Empty,
                         Caption = message.Caption ?? string.Empty,
                         Processed = false
                     };
-                    
-                    await _db.Messages.AddAsync(dbMessage);
-                    await _db.SaveChangesAsync();
-
-                    _logger.LogInformation("Bot {botId}: {bot.Name}. New message. MessageId: {messageId}", bot.Id, bot.Name, message.MessageId);
-
+                    db.Messages.Add(dbMessage);
+                    logger.LogInformation("Bot {BotId} — Новое сообщение {MessageId}", bot.Id, message.MessageId);
                 }
                 else
                 {
-                    dbMessage.FromUserId = fromUser.Id;
+                    // Обновление edited message
                     dbMessage.Date = DateTimeOffset.FromUnixTimeSeconds(message.Date).UtcDateTime;
                     dbMessage.Text = message.Text ?? string.Empty;
                     dbMessage.Caption = message.Caption ?? string.Empty;
-                    
-                    _db.Messages.Update(dbMessage);
-                    await _db.SaveChangesAsync();
-
-                    _logger.LogInformation("Bot {botId}: {bot.Name}. Updated message. MessageId: {messageId}", bot.Id, bot.Name, message.MessageId);
-
+                    logger.LogInformation("Bot {BotId} — Обновлено сообщение {MessageId}", bot.Id, message.MessageId);
                 }
 
+                // ── Фото ──────────────────────────────────────────────
                 if (message.Photo != null)
                 {
                     foreach (var photoSize in message.Photo)
                     {
-                        var dbPhoto = await _db.Photos.FirstOrDefaultAsync(p => p.FileId == photoSize.FileId && p.FileUniqueId == photoSize.FileUniqueId && p.MessageId == dbMessage.Id);
-                        
-                        if (dbPhoto == null)
+                        var exists = await db.Photos.AnyAsync(p =>
+                            p.FileId == photoSize.FileId &&
+                            p.FileUniqueId == photoSize.FileUniqueId &&
+                            p.MessageId == dbMessage.Id);
+
+                        if (!exists)
                         {
-                            dbPhoto = new Photo()
+                            db.Photos.Add(new Photo
                             {
                                 FileId = photoSize.FileId,
                                 FileUniqueId = photoSize.FileUniqueId,
@@ -186,24 +154,23 @@ namespace TelegramBotEngine
                                 Height = photoSize.Height,
                                 FileSize = photoSize.FileSize ?? 0,
                                 MessageId = dbMessage.Id
-                            };
-                           
-                            await _db.Photos.AddAsync(dbPhoto);
-                            await _db.SaveChangesAsync();
-
-                            _logger.LogInformation("Bot {botId}: {bot.Name}. New photo. FileId: {fileId}", bot.Id, bot.Name, photoSize.FileId);
+                            });
                         }
                     }
                 }
 
+                // ── Видео ─────────────────────────────────────────────
                 if (message.Video != null)
                 {
                     var video = message.Video;
-                    var dbVideo = await _db.Video.FirstOrDefaultAsync(v => v.FileId == video.FileId && v.FileUniqueId == video.FileUniqueId && v.MessageId == dbMessage.Id);
-                   
-                    if (dbVideo == null)
+                    var exists = await db.Video.AnyAsync(v =>
+                        v.FileId == video.FileId &&
+                        v.FileUniqueId == video.FileUniqueId &&
+                        v.MessageId == dbMessage.Id);
+
+                    if (!exists)
                     {
-                        dbVideo = new Video()
+                        db.Video.Add(new Video
                         {
                             FileId = video.FileId,
                             FileUniqueId = video.FileUniqueId,
@@ -214,21 +181,23 @@ namespace TelegramBotEngine
                             FileSize = video.FileSize ?? 0,
                             MimeType = video.MimeType ?? string.Empty,
                             MessageId = dbMessage.Id
-                        };
-                        
-                        await _db.Video.AddAsync(dbVideo);
-                        await _db.SaveChangesAsync();
-
-                        _logger.LogInformation("Bot {botId}: {bot.Name}. New video. FileId: {fileId}", bot.Id, bot.Name, video.FileId);
+                        });
                     }
                 }
             }
 
-            _logger.LogInformation("Bot {botId}: {bot.Name}. The changes have been written to the database.", bot.Id, bot.Name);
+            try
+            {
+                await db.SaveChangesAsync();
+                logger.LogInformation("Bot {BotId}: {BotName} — все изменения ({Count} обновлений) сохранены в БД",
+                    bot.Id, bot.Name, updates.Count());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Bot {BotId}: ошибка при сохранении в БД", bot.Id);
+            }
 
-            return updateId;
+            return lastUpdateId;
         }
     }
 }
-
-    

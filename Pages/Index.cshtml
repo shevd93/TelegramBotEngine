@@ -41,7 +41,7 @@
                     </form>
                 </td>
                 <td>
-                    <form asp-page="CommandHandlers" asp-page-handler="CommandHandlers" method="post">
+                    <form asp-page="CommandHandlers" asp-page-handler="CommandHandlers" method="get">
                         <input type="hidden" name="id" value="@bot.Id" />
                         <button type="submit" class="btn btn-primary btn-sm" disabled="@bot.IsActive">Command handlers</button>
                     </form>

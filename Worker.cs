@@ -1,111 +1,92 @@
-﻿using TelegramBotEngine.Models;
+﻿using Microsoft.EntityFrameworkCore;
 using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
-using Microsoft.EntityFrameworkCore;
+using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine
 {
-    public class Worker : BackgroundService
+    public sealed class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly TelegramBotEngineDbContext _db;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public Worker(ILogger<Worker> logger, TelegramBotEngineDbContext db)
+        public Worker(ILogger<Worker> logger, IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
-            _db = db;
+            _scopeFactory = scopeFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-
-                var bots = await _db.Bots.Where(b => b.IsActive && b.UsePulling).ToListAsync();
-
-                Task[] botTasks = new Task[bots.Count];
-
-                var index = 0;
-
-                foreach (var bot in bots)
+                try
                 {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var db = scope.ServiceProvider.GetRequiredService<TelegramBotEngineDbContext>();
 
-                    botTasks[index] = new Task(() => ProcessBot(bot, _logger));
+                    var bots = await db.Bots
+                        .Where(b => b.IsActive && b.UsePulling)
+                        .ToListAsync(stoppingToken);
 
-                    index++;
+                    // Запускаем обработку всех ботов параллельно (но безопасно)
+                    var tasks = bots.Select(bot => ProcessBotAsync(bot, stoppingToken)).ToArray();
+
+                    await Task.WhenAll(tasks);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка в основном цикле Worker");
                 }
 
-                foreach (var task in botTasks)
-                {
-                    task.Start();
-                }
-
-                await Task.WhenAll(botTasks);
-
-                await Task.Delay(10000, stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
         }
 
-        async private static void ProcessBot(Bot bot, ILogger _logger)
+        private async Task ProcessBotAsync(Bot bot, CancellationToken ct)
         {
-            using var _db = new TelegramBotEngineDbContext();
-
-            var updateId = 0;
-
-            var lastUpdate = await _db.UpdateIds.FirstOrDefaultAsync(u => u.BotId == bot.Id);
-
-            if (lastUpdate != null)
-            {
-                updateId = lastUpdate.LastUpdateId + 1;
-            }
-
-            var update = new List<Update>();
-
-            IEnumerable<Update> updates = update;
-
-            var telegramBotClient = new TelegramBotClient(bot.Token);
+            // Каждый бот — в своём собственном scope → свой DbContext → нет конфликтов
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelegramBotEngineDbContext>();
 
             try
             {
-                if (updateId == 0)
+                var lastUpdate = await db.UpdateIds
+                    .FirstOrDefaultAsync(u => u.BotId == bot.Id, ct);
+
+                int offset = lastUpdate?.LastUpdateId + 1 ?? 0;
+
+                var client = new TelegramBotClient(bot.Token);
+                var updates = await client.GetUpdatesAsync(offset: offset == 0 ? null : offset, timeout: 10, cancellationToken: ct);
+
+                if (updates.Count() == 0)
                 {
-                    updates = telegramBotClient.GetUpdates();
+                    return;
+                }
+
+                _logger.LogInformation("Bot {BotId}: {BotName}. Получено {Count} обновлений", bot.Id, bot.Name, updates.Count());
+
+                int newLastUpdateId = await Handlers.UpdateHandler(updates, bot, db, _logger);
+
+                // Обновляем или создаём запись о последнем update_id
+                if (lastUpdate != null)
+                {
+                    lastUpdate.LastUpdateId = newLastUpdateId;
                 }
                 else
                 {
-                    updates = telegramBotClient.GetUpdates(offset: updateId);
+                    await db.UpdateIds.AddAsync(new UpdateId
+                    {
+                        BotId = bot.Id,
+                        LastUpdateId = newLastUpdateId
+                    }, ct);
                 }
 
-                _logger.LogInformation("Bot {botId}: {bot.Name}. Updates received.", bot.Id, bot.Name);
+                await db.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Bot {botId}: {bot.Name}. Error receiving updates.", bot.Id, bot.Name);
-            }
-
-            if (updates.Count() > 0)
-            {
-                updateId = await Handlers.UpdateHandler(updates, bot, _db, _logger);
-
-                if (lastUpdate != null)
-                {
-                    lastUpdate.LastUpdateId = updateId;
-                    
-                    _db.UpdateIds.Update(lastUpdate);
-                }
-                else
-                {
-                    var newUpdateId = new UpdateId()
-                    {
-                        BotId = bot.Id,
-                        LastUpdateId = updateId
-                    };
-
-                    await _db.UpdateIds.AddAsync(newUpdateId);
-                }
-
-                await _db.SaveChangesAsync();
+                _logger.LogError(ex, "Ошибка обработки бота {BotId}: {BotName}", bot.Id, bot.Name);
             }
         }
     }
