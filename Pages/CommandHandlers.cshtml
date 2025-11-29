@@ -4,7 +4,47 @@
     ViewData["Title"] = "Command handlers";
 }
 
-<h1>Command handlers @Model.Bot.Name</h1>
-<a href="/CreateNewCommandHandler?id=@Model.Bot.Id">Create a new command handler</a>
+<h1>Command handlers @Model.BotName</h1>
+<a href="/CreateNewCommandHandler?id=@Model.BotId">Create a new command handler</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>External ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Active</th>
+            <th colspan="2">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var handler in Model.Handlers)
+        {
+            <tr>
+                <td>@handler.ExternalId</td>
+                <td>@handler.Name</td>
+                <td>@handler.Type</td>
+                <td>@(handler.IsActive ? "Yes":"No")</td>
+                <td>
+                    <form asp-page="EditHandler" method="post">
+                        <input type="hidden" name="id" value="@handler.Id" />
+                        <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+                    </form>
+                </td>
+                <td>
+                    <form asp-page-handler="DeleteHandler" method="post">
+                        <input type="hidden" name="id" value="@handler.Id" />
+                        <button type="submit" class="btn btn-sm" style="background-color: red; border-color: #b02a37">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.ErrorMessage != string.Empty)
+{
+    <div class="alert alert-dark mt-3" role="alert">@Model.ErrorMessage</div>
+}
 
 

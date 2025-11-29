@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Reflection.Metadata;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using TelegramBotEngine.Models;
@@ -38,44 +39,48 @@ namespace TelegramBotEngine.Pages
             if (existingBot == null)
             {
                 ErrorMessage = "Bot not found.";
-                return;
             }
-
-            BotName = existingBot.Name;
-            var telegramBotClient = new TelegramBotClient(existingBot.Token);
-
-            try
+            else
             {
-                var botCommands = telegramBotClient.GetMyCommands();
+                BotName = existingBot.Name;
+                var telegramBotClient = new TelegramBotClient(existingBot.Token);
 
-                foreach (var element in botCommands)
+                try
                 {
-                    BotCommands.Add(element.Command);
+                    var botCommands = telegramBotClient.GetMyCommands();
+
+                    foreach (var element in botCommands)
+                    {
+                        BotCommands.Add(element.Command);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = "Failed to retrieve bot commands. Please ensure the bot token is correct.";
-                _logger.LogError(ex, "Error retrieving bot commands for Bot ID: {BotId}", id);
+                catch (Exception ex)
+                {
+                    ErrorMessage = "Failed to retrieve bot commands. Please ensure the bot token is correct.";
+                    _logger.LogError(ex, "Error retrieving bot commands for Bot ID: {BotId}", id);
+                }
             }
         }
 
         public IActionResult OnPostCreateANewCommandHandler()
         { 
+            Handler.Code = Handler.Code ?? "";
+
             _db.Handlers.Add(Handler);
 
             try
             {
                 _db.SaveChanges();
+                _logger.LogInformation("New command handler created with ID: {HandlerId} for Bot ID: {BotId}", Handler.Id, Handler.BotId);
             }
             catch (Exception ex)
             {
                 ErrorMessage = string.Concat("Error creating new command handler: ", ex.Message);
-                _logger.LogError(ex, "Error creating new command handler for Bot ID: {BotId}", BotId);
+                _logger.LogError(ex, "Error creating new command handler for Bot ID: {BotId}", Handler.BotId);
                 return Page();
             }
 
-            return RedirectToPage("/CommandHandlers");
+            return RedirectToPage("/CommandHandlers", new {id = Handler.BotId});
         }
     }
 }

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Pages\EditCommandHandler.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="Pages\CreateBot.cshtml" />
   </ItemGroup>
 
