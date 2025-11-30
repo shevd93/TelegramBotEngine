@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
+using Telegram.BotAPI.AvailableMethods;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine
@@ -197,6 +199,38 @@ namespace TelegramBotEngine
             }
 
             return lastUpdateId;
+        }
+
+        public static async Task MessageHandler(
+            Bot bot,
+            Chat chat,
+            IReadOnlyList<Handler> handlers,
+            Message message,
+            TelegramBotClient client,
+            ILogger logger)
+        {
+            //...
+
+            foreach(var handler in handlers)
+            {
+                if (handler.Type == "Menu" && message.Text.Contains("/start"))
+                {
+                    try
+                    {
+                        await client.SendMessageAsync(
+                            chatId: chat.ExternalId,
+                            text: handler.Code,
+                            parseMode: "HTML");
+                    }
+                    catch
+                    {
+
+                    }
+
+                }
+            }
+
+            logger.LogInformation("Testing MessageHandler for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
         }
     }
 }

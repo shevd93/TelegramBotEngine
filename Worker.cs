@@ -32,6 +32,10 @@ namespace TelegramBotEngine
                     var tasks = bots.Select(bot => ProcessBotAsync(bot, stoppingToken)).ToArray();
 
                     await Task.WhenAll(tasks);
+
+                    tasks = bots.Select(bot => ProcessMessagesAsync(bot, stoppingToken)).ToArray();
+
+                    await Task.WhenAll(tasks);
                 }
                 catch (Exception ex)
                 {
@@ -55,7 +59,7 @@ namespace TelegramBotEngine
                 int offset = lastUpdate?.LastUpdateId + 1 ?? 0;
 
                 var client = new TelegramBotClient(bot.Token);
-                var updates = await client.GetUpdatesAsync(offset: offset == 0 ? null : offset, timeout: 10, cancellationToken: ct);
+                var updates = await client.GetUpdatesAsync(offset: offset == 0 ? null : offset, timeout: 1, cancellationToken: ct);
 
                 if (updates.Count() == 0)
                 {
@@ -85,6 +89,48 @@ namespace TelegramBotEngine
             {
                 _logger.LogError(ex, "Error processing bot {BotId}: {BotName}", bot.Id, bot.Name);
             }
+        }
+
+        private async Task ProcessMessagesAsync(Bot bot, CancellationToken ct)
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelegramBotEngineDbContext>();
+
+            var chats = await db.Chats
+                .Where(c => c.BotId == bot.Id)
+                .ToListAsync(ct);
+            
+            var handlers = await db.Handlers
+                .Where(h => h.BotId == bot.Id && h.IsActive)
+                .ToListAsync(ct);
+
+            var client = new TelegramBotClient(bot.Token);
+
+            foreach (var chat in chats)
+            {
+                var messages = await db.Messages
+                    .Where(m => m.ChatId == chat.Id && !m.Processed)
+                    .ToListAsync(ct);
+
+                foreach (var message in messages)
+                {
+                    try
+                    {
+                        if (handlers.Count() != 0)
+                        {
+                            await Handlers.MessageHandler(bot, chat, handlers, message, client, _logger);
+                        }
+                        message.Processed = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing message {MessageId} in chat {ChatId}", message.Id, chat.Id);
+                    }
+                }
+                
+                await db.SaveChangesAsync(ct);
+            }
+
         }
     }
 }
