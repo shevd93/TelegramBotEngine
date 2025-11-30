@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Reflection.Metadata;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using TelegramBotEngine.Models;
@@ -12,16 +11,13 @@ namespace TelegramBotEngine.Pages
         private readonly ILogger<CreateBotModel> _logger;
         private readonly TelegramBotEngineDbContext _db;
 
-        [BindProperty]
+        [TempData]
         public string ErrorMessage { get; set; } = string.Empty;
-
-        [BindProperty]
+        [BindProperty (SupportsGet = true)]
         public Guid BotId { get; set; }
         public string BotName { get; set; } = string.Empty;
-
         [BindProperty]
         public Handler Handler { get; set; } = new Handler();
-
         [BindProperty]
         public List<string> BotCommands { get; set; } = new List<string>();
 

@@ -35,7 +35,7 @@
                     </form>
                 </td>
                 <td>
-                    <form asp-page="EditBot" asp-page-handler="Edit" method="post">
+                    <form asp-page="EditBot" asp-page-handler="Edit" method="get">
                         <input type="hidden" name="id" value="@bot.Id" />
                         <button type="submit" class="btn btn-primary btn-sm" disabled="@bot.IsActive">Edit</button>
                     </form>

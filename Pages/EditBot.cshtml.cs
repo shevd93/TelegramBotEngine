@@ -1,95 +1,86 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Telegram.BotAPI;
-using Telegram.BotAPI.AvailableMethods;
+using Microsoft.EntityFrameworkCore;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine.Pages
 {
     public class EditBotModel : PageModel
     {
-        private readonly ILogger<CreateBotModel> _logger;
+        private readonly ILogger<EditBotModel> _logger;
         private readonly TelegramBotEngineDbContext _db;
 
+        [BindProperty(SupportsGet = true)]
+        public Guid Id { get; set; }
         [BindProperty]
-        public string ErrorMessage { get; set; } = string.Empty;
+        public BotInputModel Bot { get; set; } = new();
 
-        [BindProperty]
-        public Bot Bot { get; set; } = new Bot();
-
-        public EditBotModel(ILogger<CreateBotModel> logger, TelegramBotEngineDbContext db)
+        public EditBotModel(ILogger<EditBotModel> logger, TelegramBotEngineDbContext db)
         {
             _logger = logger;
             _db = db;
         }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
-            return RedirectToPage("/index");
-        }
-
-        public IActionResult OnPostEdit(Guid id)
-        {
-            var existingBot = _db.Bots.Find(id);
-
-            if (existingBot == null)
-            {
+            if (Id == Guid.Empty)
                 return NotFound();
-            }
-            
-            Bot = existingBot;
+
+            var bot = await _db.Bots.FindAsync(Id);
+            if (bot == null)
+                return NotFound();
+
+            Bot = new BotInputModel
+            {
+                Name = bot.Name,
+                Token = bot.Token,
+                UsePulling = bot.UsePulling,
+                WebhookUrl = bot.WebhookUrl ?? ""
+            };
 
             return Page();
         }
 
-        public async Task<IActionResult> OnPostSave()
+        public async Task<IActionResult> OnPostAsync()
         {
-            Bot.WebhookUrl = Bot.WebhookUrl ?? "";
-
-            var existingBot = _db.Bots.Find(Bot.Id);
-
-            if (existingBot == null)
+            if (!ModelState.IsValid)
             {
-                ErrorMessage = string.Concat("Bot not found. Id: ", Bot.Id);
-            }
-            else
-            {
-                var bots = (_db.Bots.Where(b => (b.Name == Bot.Name || b.Token == Bot.Token) && b.Id != Bot.Id).ToList());
-
-                if (bots.Count > 0)
-                {
-                    ErrorMessage = "A bot with the same name or token already exists.";
-                }
-                else
-                {
-                    existingBot.Name = Bot.Name;
-                    existingBot.Token = Bot.Token;
-                    existingBot.UsePulling = Bot.UsePulling;
-                    existingBot.WebhookUrl = Bot.WebhookUrl;
-
-                    try
-                    {
-                        await _db.SaveChangesAsync();
-                        _logger.LogInformation("Bot updated. Id: {Id}", Bot.Id);
-                    }
-                    catch (Exception ex)
-                    {
-                        ErrorMessage = string.Concat("Bot update failed. Id: ", Bot.Id, ". Error: ", ex.Message);
-                    }
-                }
-
-            }
-
-            if (ErrorMessage == string.Empty)
-            {
-                return RedirectToPage("/index");
-            }
-            else
-            {
-                _logger.LogError(ErrorMessage);
                 return Page();
             }
 
+            var existingBot = await _db.Bots.FindAsync(Id);
+            if (existingBot == null)
+            {
+                ModelState.AddModelError(string.Empty, "Bot not found.");
+                return Page();
+            }
+
+            var duplicate = await _db.Bots
+                    .AnyAsync(b => b.Id != Id && (b.Name == Bot.Name.Trim() || b.Token == Bot.Token.Trim()));
+
+            if (duplicate)
+            {
+                ModelState.AddModelError(string.Empty, "A bot with the same name or token already exists.");
+                return Page();
+            }
+
+            existingBot.Name = Bot.Name.Trim();
+            existingBot.Token = Bot.Token.Trim();
+            existingBot.UsePulling = Bot.UsePulling;
+            existingBot.WebhookUrl = string.IsNullOrWhiteSpace(Bot.WebhookUrl) ? string.Empty : Bot.WebhookUrl.Trim();
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Bot updated successfully. Id: {Id}, Name: {Name}", Id, Bot.Name);
+                return RedirectToPage("/Index");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update bot. Id: {Id}", Id);
+                ModelState.AddModelError(string.Empty, "Failed to save changes. Please try again.");
+                return Page();
+            }
         }
     }
 }

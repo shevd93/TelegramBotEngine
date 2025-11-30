@@ -11,8 +11,6 @@ public class CommandHandlersModel : PageModel
     public Guid BotId { get; set; }
     [BindProperty]
     public string BotName { get; set; } = string.Empty;
-    [BindProperty]
-    public string ErrorMessage { get; set; } = string.Empty;
     public List<Handler> Handlers { get; set; } = new();
 
     public CommandHandlersModel(ILogger<CommandHandlersModel> logger, TelegramBotEngineDbContext db)
@@ -31,7 +29,8 @@ public class CommandHandlersModel : PageModel
         var bot = _db.Bots.Find(BotId);
         if (bot == null)
         {
-            ErrorMessage = "Bot not found.";
+            var errorMessage = "Bot not found.";
+            ModelState.AddModelError(string.Empty, errorMessage);
             _logger.LogWarning("Bot not found: {BotId}", BotId);
             return NotFound();
         }
@@ -50,8 +49,9 @@ public class CommandHandlersModel : PageModel
 
         if (handler == null)
         {
-            ErrorMessage = $"Handler with ID {id} not found.";
-            _logger.LogWarning(ErrorMessage);
+            var errorMessage = $"Handler with ID {id} not found.";
+            ModelState.AddModelError(string.Empty, errorMessage);
+            _logger.LogWarning(errorMessage);
             return Page(); 
         }
 

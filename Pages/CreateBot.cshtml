@@ -18,7 +18,6 @@
                        placeholder="e.g. My Store Bot" />
                 <span asp-validation-for="Bot.Name" class="text-danger small"></span>
             </div>
-
             <div class="mb-3">
                 <label asp-for="Bot.Token" class="form-label fw-medium"></label>
                 <input asp-for="Bot.Token"
@@ -26,7 +25,6 @@
                        placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" />
                 <span asp-validation-for="Bot.Token" class="text-danger small"></span>
             </div>
-
             <div class="mb-3">
                 <label asp-for="Bot.WebhookUrl" class="form-label fw-medium"></label>
                 <input asp-for="Bot.WebhookUrl"
@@ -37,7 +35,6 @@
                 </div>
                 <span asp-validation-for="Bot.WebhookUrl" class="text-danger small"></span>
             </div>
-
             <div class="mb-4">
                 <div class="form-check">
                     <input class="form-check-input"
@@ -50,14 +47,8 @@
                     </label>
                 </div>
             </div>
-
             <div class="d-flex gap-3">
-                <button type="submit" class="btn btn-success btn-lg px-5">
-                    Create bot
-                </button>
-                <a asp-page="/Index" class="btn btn-outline-secondary btn-lg">
-                    Cancel
-                </a>
+                <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </div>
     </form>
