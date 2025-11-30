@@ -1,4 +1,67 @@
 ﻿@page
-@model TelegramBotEngine.Pages.EditCommandHandlerModel
+@using TelegramBotEngine.Models
+@model EditCommandHandlerModel
 @{
+    ViewData["Title"] = "Edit command handler";
 }
+
+<h1>Edit command handler "@Model.Handler.Name" for @Model.BotName</h1>
+
+<div class="container form-container mt-4">
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-dark mt-3" role="alert">@Model.ErrorMessage</div>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="EditCommandHandler">
+            <input type="hidden" asp-for="@Model.Handler.Id" value="@Model.Handler.Id" />
+            <div class="mb-3">
+                <label class="form-label">External ID</label>
+                @{
+                    var botCommands = Model.BotCommands;
+                    if (botCommands.Count != 0)
+                    {
+                        <select class="form-select" asp-for="@Model.Handler.ExternalId" required>
+                            @{
+                                foreach (var command in botCommands)
+                                {
+                                    <option value="@command">@command</option>
+                                }
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" class="form-control form-control-sm" placeholder="No commands available. Enter external ID" asp-for="@Model.Handler.ExternalId" required>
+                    }
+                }
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control form-control-sm" placeholder="Enter name" asp-for="@Model.Handler.Name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Type</label>
+                <select class="form-select" asp-for="@Model.Handler.Type" required>
+                    @{
+                        var handlersTypes = Handler.HandlersTypeNames();
+                        foreach (var type in handlersTypes)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="Code" class="form-label">Enter code:</label>
+                <textarea class="form-control" rows="10" placeholder="Enter code here..." asp-for="@Model.Handler.Code"></textarea>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" asp-for="@Model.Handler.IsActive">
+                <label class="form-check-label">Active</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    }
+</div>

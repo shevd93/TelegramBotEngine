@@ -28,7 +28,7 @@
                 <td>@handler.Type</td>
                 <td>@(handler.IsActive ? "Yes":"No")</td>
                 <td>
-                    <form asp-page="EditHandler" method="get">
+                    <form asp-page="EditCommandHandler" method="get">
                         <input type="hidden" name="id" value="@handler.Id" />
                         <button type="submit" class="btn btn-primary btn-sm">Edit</button>
                     </form>
