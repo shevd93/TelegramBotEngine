@@ -38,6 +38,7 @@ public class BotModel(
 
         return Page();
     }
+
     public async Task<IActionResult> OnPostSendMessageAsync()
     {
         if (SelectedChat is null || SelectedChat == Guid.Empty)
