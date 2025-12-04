@@ -61,6 +61,7 @@ namespace TelegramBotEngine.Pages
         public IActionResult OnPostCreateANewCommandHandler()
         { 
             Handler.Code = Handler.Code ?? "";
+            Handler.Text = Handler.Text ?? "";
 
             _db.Handlers.Add(Handler);
 

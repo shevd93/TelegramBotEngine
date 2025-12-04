@@ -57,6 +57,10 @@
                 <label for="Code" class="form-label">Enter code:</label>
                 <textarea class="form-control" rows="10" placeholder="Enter code here..." asp-for="@Model.Handler.Code"></textarea>
             </div>
+            <div class="mb-3">
+                <label for="Code" class="form-label">Enter text:</label>
+                <textarea class="form-control" rows="10" placeholder="Enter text here..." asp-for="@Model.Handler.Text"></textarea>
+            </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" asp-for="@Model.Handler.IsActive">
                 <label class="form-check-label">Active</label>

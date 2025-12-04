@@ -1,0 +1,7 @@
+<Project>
+  <ItemGroup>
+    <ReferencePath Remove="**\uap10.0\**" />
+    <ReferencePath Remove="**\win10-**" />
+    <ReferencePath Remove="**\System.Runtime.dll" />
+  </ItemGroup>
+</Project>

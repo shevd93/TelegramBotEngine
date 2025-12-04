@@ -215,7 +215,7 @@ namespace TelegramBotEngine
                 {
                     try
                     {
-                        await TelegramExtension.SendMenu(chat.ExternalId, handler.Code, client);
+                        await TelegramExtension.SendMenu(chat.ExternalId, handler.Code, handler.Text, client);
                     }
                     catch
                     {

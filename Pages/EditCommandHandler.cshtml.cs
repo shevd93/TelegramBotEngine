@@ -85,7 +85,8 @@ namespace TelegramBotEngine.Pages
 
             existingHandler.Name = Handler.Name;
             existingHandler.Type = Handler.Type;
-            existingHandler.Code = Handler.Code;
+            existingHandler.Code = Handler.Code ?? "";
+            existingHandler.Text = Handler.Text ?? "";
             existingHandler.IsActive = Handler.IsActive;
 
             try
