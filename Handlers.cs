@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
-using Telegram.BotAPI.AvailableMethods;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine
@@ -209,24 +208,19 @@ namespace TelegramBotEngine
             TelegramBotClient client,
             ILogger logger)
         {
-            //...
-
             foreach(var handler in handlers)
             {
+                //── Menu ──────────────────────────────────────────────────────
                 if (handler.Type == "Menu" && message.Text.Contains("/start"))
                 {
                     try
                     {
-                        await client.SendMessageAsync(
-                            chatId: chat.ExternalId,
-                            text: handler.Code,
-                            parseMode: "HTML");
+                        await TelegramExtension.SendMenu(chat.ExternalId, handler.Code, client);
                     }
                     catch
                     {
-
+                        logger.LogError("");
                     }
-
                 }
             }
 
