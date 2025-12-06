@@ -4,20 +4,14 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Pages\EditCommandHandler.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Pages\CreateBot.cshtml" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
     <PackageReference Include="Telegram.BotAPI" Version="9.2.0" />
   </ItemGroup>
+  
 
 </Project>
