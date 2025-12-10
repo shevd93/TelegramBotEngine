@@ -4,6 +4,7 @@
     {
         public Guid Id { get; set; } = Guid.Empty;
         public int ExternalId { get; set; } = 0;
+        public int ReplyToMessageExternalId { get; set; } = 0;
         public Guid FromUserId { get; set; }
         public FromUser? FromUser { get; set; }
         public DateTime Date { get; set; } = DateTime.MinValue;

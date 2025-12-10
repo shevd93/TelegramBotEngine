@@ -118,7 +118,7 @@ namespace TelegramBotEngine
                     {
                         if (handlers.Count() != 0)
                         {
-                            await Handlers.MessageHandler(bot, chat, handlers, message, client, _logger);
+                            await Handlers.MessageHandler(bot, db, chat, handlers, message, client, _logger);
                         }
                         message.Processed = true;
                     }

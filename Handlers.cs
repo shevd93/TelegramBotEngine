@@ -30,7 +30,7 @@ namespace TelegramBotEngine
                 if (message.Chat == null || message.From == null)
                     continue;
 
-                // ── Working with Chat ─────────────────────────────────────
+                // -- Working with Chat --
                 Chat chat;
                 if (!chatCache.TryGetValue(message.Chat.Id, out chat!))
                 {
@@ -71,7 +71,7 @@ namespace TelegramBotEngine
                     chatCache[message.Chat.Id] = chat;
                 }
 
-                // ── Working with FromUser ─────────────────────────────────
+                // -- Working with FromUser --
                 FromUser fromUser;
                 if (!userCache.TryGetValue(message.From.Id, out fromUser!))
                 {
@@ -107,7 +107,7 @@ namespace TelegramBotEngine
                     userCache[message.From.Id] = fromUser;
                 }
 
-                // ── Working with Message ──────────────────────────────────
+                // -- Working with Message --
                 var dbMessage = await db.Messages
                     .FirstOrDefaultAsync(m => m.ExternalId == message.MessageId && m.ChatId == chat.Id);
 
@@ -116,6 +116,7 @@ namespace TelegramBotEngine
                     dbMessage = new Message
                     {
                         ExternalId = message.MessageId,
+                        ReplyToMessageExternalId = message.ReplyToMessage?.MessageId ?? 0,
                         ChatId = chat.Id,
                         FromUserId = fromUser.Id,
                         Date = DateTimeOffset.FromUnixTimeSeconds(message.Date).UtcDateTime,
@@ -135,7 +136,7 @@ namespace TelegramBotEngine
                     logger.LogInformation("Bot {BotId} — Message {MessageId} updated (edited)", bot.Id, message.MessageId);
                 }
 
-                // ── Photo ──────────────────────────────────────────────
+                // -- Photo --
                 if (message.Photo != null)
                 {
                     foreach (var photoSize in message.Photo)
@@ -160,7 +161,7 @@ namespace TelegramBotEngine
                     }
                 }
 
-                // ── Video ─────────────────────────────────────────────
+                // -- Video --
                 if (message.Video != null)
                 {
                     var video = message.Video;
@@ -202,6 +203,7 @@ namespace TelegramBotEngine
 
         public static async Task MessageHandler(
             Bot bot,
+            TelegramBotEngineDbContext db,
             Chat chat,
             IReadOnlyList<Handler> handlers,
             Message message,
@@ -210,16 +212,43 @@ namespace TelegramBotEngine
         {
             foreach(var handler in handlers)
             {
-                //── Menu ──────────────────────────────────────────────────────
-                if (handler.Type == "Menu" && message.Text.Contains("/start"))
+                //-- Menu --
+
+                var externalid = string.Concat("/", handler.ExternalId);
+
+                if (handler.Type == "Menu" && message.Text.Contains(externalid))
                 {
                     try
                     {
                         await TelegramExtension.SendMenu(chat.ExternalId, handler.Code, handler.Text, client);
                     }
-                    catch
+                    catch(Exception ex)
                     {
-                        logger.LogError("");
+                        logger.LogError(ex, "Error sending menu for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                    }
+                }
+
+                //-- CheckingAMessageForToxicity --
+
+                if (handler.Type == "CheckingAMessageForToxicity" && message.Text.Contains(externalid) && message.ReplyToMessageExternalId !=0)
+                {
+                    var replyMessage = await db.Messages
+                        .FirstOrDefaultAsync(m => m.ExternalId == message.ReplyToMessageExternalId && m.ChatId == chat.Id);
+
+                    if (replyMessage != null)
+                    {
+                        //
+                    }
+                    else
+                    {
+                        try
+                        {
+                            await TelegramExtension.SendMessage(chat.ExternalId, "The message to check for toxicity was not found.", client);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Error sending toxicity check failure message for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                        }
                     }
                 }
             }

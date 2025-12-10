@@ -10,6 +10,8 @@ namespace TelegramBotEngine.Models
         public bool UsePulling { get; set; } = true;
         public string WebhookUrl { get; set; } = string.Empty;
         public bool IsActive { get; set; } = false;
+        public string DeepSeekApiKey { get; set; } = string.Empty;
+        public bool CheckMessagesForToxity { get; set; } = false;
     }
     public class BotInputModel
     {
@@ -28,5 +30,11 @@ namespace TelegramBotEngine.Models
 
         [Display(Name = "Use polling instead of webhook")]
         public bool UsePulling { get; set; } = true;
+
+        [Display(Name = "Deep Seek API KEY")]
+        public string? DeepSeekApiKey { get; set; } = string.Empty;
+        [Display(Name = "Check messages for toxicity with Deep Seek")]
+        
+        public bool CheckMessagesForToxity { get; set; } = false;
     }
 }

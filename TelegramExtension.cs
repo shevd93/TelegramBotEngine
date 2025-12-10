@@ -23,7 +23,15 @@ namespace TelegramBotEngine
                 replyMarkup: keyboard,
                 parseMode: "HTML");
 
-        }           
+        }
+        
+        public static async Task SendMessage(long chatId, string text, TelegramBotClient client)
+        {
+            await client.SendMessageAsync(
+                chatId: chatId,
+                text: text,
+                parseMode: "HTML");
+        }
 
     }
 }

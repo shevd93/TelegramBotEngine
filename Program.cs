@@ -11,6 +11,9 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
+scope.ServiceProvider.GetRequiredService<TelegramBotEngineDbContext>().Database.EnsureCreated();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

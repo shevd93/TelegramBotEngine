@@ -35,7 +35,9 @@ namespace TelegramBotEngine.Pages
                 Name = bot.Name,
                 Token = bot.Token,
                 UsePulling = bot.UsePulling,
-                WebhookUrl = bot.WebhookUrl ?? ""
+                WebhookUrl = bot.WebhookUrl ?? "",
+                DeepSeekApiKey = bot.DeepSeekApiKey ?? "",
+                CheckMessagesForToxity = bot.CheckMessagesForToxity
             };
 
             return Page();
@@ -46,6 +48,23 @@ namespace TelegramBotEngine.Pages
             if (!ModelState.IsValid)
             {
                 return Page();
+            }
+
+            if (Bot.CheckMessagesForToxity && string.IsNullOrWhiteSpace(Bot.DeepSeekApiKey))
+            {
+                ModelState.AddModelError(string.Empty, "DeepSeek API Key is required when checking messages for toxicity.");
+                return Page();
+            }
+
+            if (!string.IsNullOrWhiteSpace(Bot.DeepSeekApiKey))
+            {
+                var response = await DeepSeekExtension.CheckDeepSeekApiKey(Bot.DeepSeekApiKey.Trim());
+
+                if (!string.IsNullOrEmpty(response))
+                {
+                    ModelState.AddModelError(string.Empty, response);
+                    return Page();
+                }
             }
 
             var existingBot = await _db.Bots.FindAsync(Id);
@@ -68,6 +87,8 @@ namespace TelegramBotEngine.Pages
             existingBot.Token = Bot.Token.Trim();
             existingBot.UsePulling = Bot.UsePulling;
             existingBot.WebhookUrl = string.IsNullOrWhiteSpace(Bot.WebhookUrl) ? string.Empty : Bot.WebhookUrl.Trim();
+            existingBot.DeepSeekApiKey = string.IsNullOrWhiteSpace(Bot.DeepSeekApiKey) ? string.Empty : Bot.DeepSeekApiKey.Trim();
+            existingBot.CheckMessagesForToxity = Bot.CheckMessagesForToxity;
 
             try
             {

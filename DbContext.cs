@@ -15,15 +15,19 @@ namespace TelegramBotEngine
         public DbSet<Photo> Photos => Set<Photo>();
         public DbSet<Video> Video => Set<Video>();
         public DbSet<Handler> Handlers => Set<Handler>();
+        public DbSet<ToxicUser> ToxicUsers => Set<ToxicUser>();
+        public DbSet<KPI> KPIs => Set<KPI>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<FromUser>().HasIndex(f => f.ExternalId);
             modelBuilder.Entity<Chat>().HasIndex(c => new { c.ExternalId, c.BotId });
-            modelBuilder.Entity<Message>().HasIndex(m => new { m.ExternalId, m.FromUserId, m.ChatId });
+            modelBuilder.Entity<Message>().HasIndex(m => new { m.ExternalId, m.ReplyToMessageExternalId, m.FromUserId, m.ChatId});
             modelBuilder.Entity<Photo>().HasIndex(p => new { p.FileId, p.FileUniqueId, p.MessageId });
             modelBuilder.Entity<Video>().HasIndex(v => new { v.FileId, v.FileUniqueId, v.MessageId });
             modelBuilder.Entity<Handler>().HasIndex(h => new { h.ExternalId, h.BotId });
+            modelBuilder.Entity<ToxicUser>().HasIndex(tu => new { tu.FromUserId, tu.ChatId });
+            modelBuilder.Entity<KPI>().HasIndex(k => new { k.FromUserId, k.ChatId });
 
             base.OnModelCreating(modelBuilder);
         }
