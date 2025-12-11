@@ -12,6 +12,7 @@
         public Chat? Chat { get; set; }
         public string Text { get; set; } = string.Empty;
         public string Caption { get; set; } = string.Empty;
-        public bool Processed { get; set; } = false;    
+        public bool Processed { get; set; } = false;
+        public bool VerifiedOnToxics { get; set; } = false; 
     }
 }

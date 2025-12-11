@@ -235,15 +235,157 @@ namespace TelegramBotEngine
                     var replyMessage = await db.Messages
                         .FirstOrDefaultAsync(m => m.ExternalId == message.ReplyToMessageExternalId && m.ChatId == chat.Id);
 
-                    if (replyMessage != null)
+                    var now = DateTime.UtcNow;
+
+                    if (replyMessage != null && now.Subtract(replyMessage.Date).Days < 1 && !replyMessage.VerifiedOnToxics)
                     {
-                        //
+
+                        var fromUser = await db.FromUsers
+                            .FirstOrDefaultAsync(fu => fu.Id == replyMessage.FromUserId);
+
+
+                        if (fromUser != null && fromUser.IsBot)
+                        {
+                            try
+                            {
+                                await TelegramExtension.SendMessage(chat.ExternalId, "Против бота не свидетельствуют)", client, message.ExternalId);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Error sending message to bot indicating author is a bot. Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+                        }
+                        else if (replyMessage.FromUser == message.FromUser)
+                        {
+                            try
+                            {
+                                await TelegramExtension.SendMessage(chat.ExternalId, "Против себя не свидетельствуют)", client, message.ExternalId);
+                            }
+                            catch(Exception ex)
+                            {
+                                logger.LogError(ex, "Error sending message for Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(replyMessage.Text))
+                        {
+                            var isToxic = await DeepSeekExtension.IsMessageToxic(bot.DeepSeekApiKey, replyMessage.Text);
+
+                            if (isToxic)
+                            {
+                                var toxic = await db.ToxicUsers
+                                    .FirstOrDefaultAsync(t => t.FromUserId == replyMessage.FromUserId && t.ChatId == chat.Id);
+
+                                if (toxic == null)
+                                {
+                                    await db.ToxicUsers.AddAsync(new ToxicUser
+                                    {
+                                        FromUserId = replyMessage.FromUserId,
+                                        ChatId = chat.Id,
+                                        Score = 1.0f
+                                    });
+                                }
+                                else
+                                {
+                                    toxic.Score += 1.0f;
+                                }
+
+                                var kpi = await db.KPIs
+                                    .FirstOrDefaultAsync(k => k.FromUserId == message.FromUserId && k.ChatId == chat.Id);
+
+                                if (kpi == null)
+                                {
+                                    await db.KPIs.AddAsync(new KPI
+                                    {
+                                        FromUserId = message.FromUserId,
+                                        ChatId = chat.Id,
+                                        Score = 1.0f
+                                    });
+                                }
+                                else
+                                {
+                                    kpi.Score += 1.0f;
+                                }
+
+                                try
+                                {
+                                    //await TelegramExtension.SendMessage(chat.ExternalId, "The message you replied to was detected as toxic.", client, message.ExternalId);
+                                    await TelegramExtension.SendMessage(chat.ExternalId, "Красавчик! Сдал токсика, ему +балл за токсичность, а тебе +KPI!", client, message.ExternalId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogError(ex, "Error sending toxicity detected message for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                                }
+                            }
+                            else
+                            {
+                                var toxic = await db.ToxicUsers
+                                   .FirstOrDefaultAsync(t => t.FromUserId == message.FromUserId && t.ChatId == chat.Id);
+
+                                if (toxic == null)
+                                {
+                                    await db.ToxicUsers.AddAsync(new ToxicUser
+                                    {
+                                        FromUserId = message.FromUserId,
+                                        ChatId = chat.Id,
+                                        Score = 1.0f
+                                    });
+                                }
+                                else
+                                {
+                                    toxic.Score += 1.0f;
+                                }
+
+                                var kpi = await db.KPIs
+                                    .FirstOrDefaultAsync(k => k.FromUserId == message.FromUserId && k.ChatId == chat.Id);
+
+                                if (kpi == null)
+                                {
+                                    await db.KPIs.AddAsync(new KPI
+                                    {
+                                        FromUserId = message.FromUserId,
+                                        ChatId = chat.Id,
+                                        Score = - 1.0f
+                                    });
+                                }
+                                else
+                                {
+                                    kpi.Score -= 1.0f;
+                                }
+
+                                try
+                                {
+                                    //await TelegramExtension.SendMessage(chat.ExternalId, "The message is not toxic.", client, message.ExternalId);
+                                    await TelegramExtension.SendMessage(chat.ExternalId, "Ля ты даешь! -KPI за кливиту и +балл в ТОП токсиков для профилактики!", client, message.ExternalId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogError(ex, "Error sending not toxicity detected message for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                                }
+                            }
+
+                            replyMessage.VerifiedOnToxics = true;
+
+                            await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            try
+                            {
+                                //await TelegramExtension.SendMessage(chat.ExternalId, "The message to check for toxicity has no text.", client, message.ExternalId);
+                                await TelegramExtension.SendMessage(chat.ExternalId, "Сообщение для проверки не содержит текст.", client, message.ExternalId);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Error sending toxicity check no text message for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+                        }
                     }
                     else
                     {
                         try
                         {
-                            await TelegramExtension.SendMessage(chat.ExternalId, "The message to check for toxicity was not found.", client);
+                            //await TelegramExtension.SendMessage(chat.ExternalId, "The message to check for toxicity was not found.", client, message.ExternalId);
+                            await TelegramExtension.SendMessage(chat.ExternalId, "Пу пу пу....", client, message.ExternalId);
                         }
                         catch (Exception ex)
                         {
