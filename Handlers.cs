@@ -122,7 +122,8 @@ namespace TelegramBotEngine
                         Date = DateTimeOffset.FromUnixTimeSeconds(message.Date).UtcDateTime,
                         Text = message.Text ?? string.Empty,
                         Caption = message.Caption ?? string.Empty,
-                        Processed = false
+                        Processed = false,
+                        VerifiedOnToxics = false
                     };
                     db.Messages.Add(dbMessage);
                     logger.LogInformation("Bot {BotId} — New message {MessageId}", bot.Id, message.MessageId);
@@ -266,9 +267,9 @@ namespace TelegramBotEngine
                                 logger.LogError(ex, "Error sending message for Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
                             }
                         }
-                        else if (!string.IsNullOrEmpty(replyMessage.Text))
+                        else if (!string.IsNullOrEmpty(replyMessage.Text) || !string.IsNullOrEmpty(replyMessage.Caption))
                         {
-                            var isToxic = await DeepSeekExtension.IsMessageToxic(bot.DeepSeekApiKey, replyMessage.Text);
+                            var isToxic = await DeepSeekExtension.IsMessageToxic(bot.DeepSeekApiKey, string.Concat(replyMessage.Text, replyMessage.Caption));
 
                             if (isToxic)
                             {
