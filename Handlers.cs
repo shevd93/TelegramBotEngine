@@ -10,6 +10,7 @@ namespace TelegramBotEngine
         public static async Task<int> UpdateHandler(
             IEnumerable<Update> updates,
             Bot bot,
+            TelegramBotClient client,
             TelegramBotEngineDbContext db,
             ILogger logger)
         {
@@ -23,7 +24,18 @@ namespace TelegramBotEngine
             {
                 lastUpdateId = update.UpdateId;
 
-                if (update.Message == null && update.EditedMessage == null)
+
+                // -- Callback --
+                if (update.CallbackQuery?.Data != null && update.CallbackQuery.Message?.Chat != null)
+                {
+                    var data = update.CallbackQuery.Data;
+                    var chatId = update.CallbackQuery.Message.Chat.Id;          
+
+                    await CallbackQueryHandler(data, chatId, bot, client, db, logger);
+                    continue;
+                }
+
+                if (update.Message == null && update.EditedMessage == null && update.CallbackQuery == null)
                     continue;
 
                 var message = update.EditedMessage ?? update.Message!;
@@ -236,16 +248,37 @@ namespace TelegramBotEngine
                     var replyMessage = await db.Messages
                         .FirstOrDefaultAsync(m => m.ExternalId == message.ReplyToMessageExternalId && m.ChatId == chat.Id);
 
-                    var now = DateTime.UtcNow;
-
-                    if (replyMessage != null && now.Subtract(replyMessage.Date).Days < 1 && !replyMessage.VerifiedOnToxics)
+                    if (replyMessage != null)
                     {
 
                         var fromUser = await db.FromUsers
                             .FirstOrDefaultAsync(fu => fu.Id == replyMessage.FromUserId);
 
+                        var now = DateTime.UtcNow;
 
-                        if (fromUser != null && fromUser.IsBot)
+                        if (now.Subtract(replyMessage.Date).Hours > 24)
+                        {
+                            try
+                            {
+                                await TelegramExtension.SendMessage(chat.ExternalId, "Прошло больше суток. Поезд ушел)", client, message.ExternalId);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Error sending message to bot indicating more than a day has passed. Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+                        }
+                        else if (replyMessage.VerifiedOnToxics)
+                        {
+                            try
+                            {
+                                await TelegramExtension.SendMessage(chat.ExternalId, "Сообщение уже проверено на токсичность", client, message.ExternalId);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Error sending message to bot indicating that message has already been checked for toxicity. Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+                        }
+                        else if (fromUser != null && fromUser.IsBot)
                         {
                             try
                             {
@@ -262,7 +295,7 @@ namespace TelegramBotEngine
                             {
                                 await TelegramExtension.SendMessage(chat.ExternalId, "Против себя не свидетельствуют)", client, message.ExternalId);
                             }
-                            catch(Exception ex)
+                            catch (Exception ex)
                             {
                                 logger.LogError(ex, "Error sending message for Bot { BotId}, Chat { ChatId}, Message { MessageId}", bot.Id, chat.Id, message.Id);
                             }
@@ -345,7 +378,7 @@ namespace TelegramBotEngine
                                     {
                                         FromUserId = message.FromUserId,
                                         ChatId = chat.Id,
-                                        Score = - 1.0f
+                                        Score = -1.0f
                                     });
                                 }
                                 else
@@ -356,7 +389,7 @@ namespace TelegramBotEngine
                                 try
                                 {
                                     //await TelegramExtension.SendMessage(chat.ExternalId, "The message is not toxic.", client, message.ExternalId);
-                                    await TelegramExtension.SendMessage(chat.ExternalId, "Ля ты даешь! -KPI за кливиту и +балл в ТОП токсиков для профилактики!", client, message.ExternalId);
+                                    await TelegramExtension.SendMessage(chat.ExternalId, "Ля ты даешь! -KPI за клевету и +балл в ТОП токсиков для профилактики!", client, message.ExternalId);
                                 }
                                 catch (Exception ex)
                                 {
@@ -394,9 +427,117 @@ namespace TelegramBotEngine
                         }
                     }
                 }
+
+                // ------
             }
 
             logger.LogInformation("Testing MessageHandler for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
         }
+
+        public static async Task CallbackQueryHandler(string data, long chatId, Bot bot, TelegramBotClient client,TelegramBotEngineDbContext db, ILogger logger)
+        {
+
+            var chat = await db.Chats
+                .FirstOrDefaultAsync(c => c.ExternalId == chatId);
+
+            if (chat == null)
+            {
+                logger.LogError("Chat not found. Extermal ID: {ChatId}", chatId);
+                return;
+            }
+
+            // -- ToxicTop --
+            if (data == "ToxicTop")
+            {
+                var toxics = await db.ToxicUsers
+                    .Where(tu => tu.ChatId == chat.Id)
+                    .Include(tu => tu.FromUser)
+                    .OrderByDescending(tu => tu.Score)
+                    .ToListAsync();
+
+                var topList = string.Empty;
+
+                var top = 0;
+
+                foreach (var toxicUser in toxics)
+                {
+                    if (toxicUser.Score == 0)
+                    {
+                        continue;
+                    }
+                    
+                    top += 1;
+
+                    var username = toxicUser.FromUser!.Username;
+
+                    if (string.IsNullOrEmpty(username))
+                    {
+                        username = toxicUser.FromUser!.FirstName ?? "Неопознанный пользователь";
+                    }
+
+                    topList = string.Concat(topList, $"{top}. @{username}: {toxicUser.Score}\n");
+                }
+
+                try
+                {
+                    if (string.IsNullOrEmpty(topList))
+                    {
+                        topList = "Нет токсичных пользователей.";
+                    }
+                    await TelegramExtension.SendMessage(chat.ExternalId, $"<blockquote expandable>🏆 ТОП токсиков🏆\n\n{topList}</blockquote>", client);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error sending Toxic Top list for Bot {BotId}, Chat {ChatId}", bot.Id, chat.Id);
+                }
+            }
+
+            // -- MyKPI --
+            if (data == "MyKPI")
+            {
+                var KPIs = await db.KPIs
+                    .Where(tu => tu.ChatId == chat.Id)
+                    .Include(tu => tu.FromUser)
+                    .OrderByDescending(tu => tu.Score)
+                    .ToListAsync();
+
+                var topList = string.Empty;
+
+                var top = 0;
+
+                foreach (var KPI in KPIs)
+                {
+                    if (KPI.Score == 0)
+                    {
+                        continue;
+                    }
+
+                    top += 1;
+
+                    var username = KPI.FromUser!.Username;
+
+                    if (string.IsNullOrEmpty(username))
+                    {
+                        username = KPI.FromUser!.FirstName ?? "Неопознанный пользователь";
+                    }
+
+                    topList = string.Concat(topList, $"{top}. @{username}: {KPI.Score}\n");
+                }
+
+                try
+                {
+                    if (string.IsNullOrEmpty(topList))
+                    {
+                        topList = "Нет KPI пользователей.";
+                    }
+                    await TelegramExtension.SendMessage(chat.ExternalId, $"<blockquote expandable>🏆 KPI 🏆\n\n{topList}</blockquote>", client);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error sending KPI Top list for Bot {BotId}, Chat {ChatId}", bot.Id, chat.Id);
+                }
+            }
+        }
+
     }
 }

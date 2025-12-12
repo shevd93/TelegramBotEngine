@@ -68,7 +68,7 @@ namespace TelegramBotEngine
 
                 _logger.LogInformation("Bot {BotId}: {BotName}. Received {Count} update(s)", bot.Id, bot.Name, updates.Count());
 
-                int newLastUpdateId = await Handlers.UpdateHandler(updates, bot, db, _logger);
+                int newLastUpdateId = await Handlers.UpdateHandler(updates, bot, client, db, _logger);
 
                 if (lastUpdate != null)
                 {
