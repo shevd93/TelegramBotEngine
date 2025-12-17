@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
 using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
 using TelegramBotEngine.Models;
@@ -23,7 +24,6 @@ namespace TelegramBotEngine
             foreach (var update in updates)
             {
                 lastUpdateId = update.UpdateId;
-
 
                 // -- Callback --
                 if (update.CallbackQuery?.Data != null && update.CallbackQuery.Message?.Chat != null)
@@ -254,9 +254,7 @@ namespace TelegramBotEngine
                         var fromUser = await db.FromUsers
                             .FirstOrDefaultAsync(fu => fu.Id == replyMessage.FromUserId);
 
-                        var now = DateTime.UtcNow;
-
-                        if (now.Subtract(replyMessage.Date).Hours > 24)
+                        if ((DateTime.UtcNow - replyMessage.Date).TotalDays > 1)
                         {
                             try
                             {
@@ -428,7 +426,21 @@ namespace TelegramBotEngine
                     }
                 }
 
-                // ------
+                // --Quiz--
+
+                if (handler.Type == "Quiz" && message.Text.Contains(externalid))
+                {
+                    try
+                    {
+                        await TelegramExtension.SendQuiz(chat.ExternalId, client);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error sending quiz for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                    }
+                }
+
+                // ----
             }
 
             logger.LogInformation("Testing MessageHandler for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
@@ -537,6 +549,8 @@ namespace TelegramBotEngine
                     logger.LogError(ex, "Error sending KPI Top list for Bot {BotId}, Chat {ChatId}", bot.Id, chat.Id);
                 }
             }
+
+            // --
         }
 
     }

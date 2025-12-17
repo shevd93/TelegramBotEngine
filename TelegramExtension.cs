@@ -34,5 +34,24 @@ namespace TelegramBotEngine
                 parseMode: "HTML");
         }
 
+        public static async Task SendQuiz(long chatId, TelegramBotClient client)
+        {
+            var poll = new SendPollArgs(
+                chatId,
+                "1+1?",
+                [
+                    new InputPollOption("2"),
+                    new InputPollOption("3"),
+                    new InputPollOption("4")
+                ]
+            )
+            {
+                Type = "quiz",
+                CorrectOptionId = 0,
+                IsAnonymous = false
+            };
+
+            await client.SendPollAsync(poll);
+        }
     }
 }
