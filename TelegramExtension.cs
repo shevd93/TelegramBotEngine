@@ -53,5 +53,13 @@ namespace TelegramBotEngine
 
             await client.SendPollAsync(poll);
         }
+
+        public static async Task SendImage(long chatId, TelegramBotClient client, string url)
+        {
+            await client.SendPhotoAsync(
+                chatId: chatId,
+                photo: url,
+                parseMode: "HTML");
+        }
     }
 }

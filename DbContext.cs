@@ -17,6 +17,7 @@ namespace TelegramBotEngine
         public DbSet<Handler> Handlers => Set<Handler>();
         public DbSet<ToxicUser> ToxicUsers => Set<ToxicUser>();
         public DbSet<KPI> KPIs => Set<KPI>();
+        public DbSet<Mem> Mems => Set<Mem>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

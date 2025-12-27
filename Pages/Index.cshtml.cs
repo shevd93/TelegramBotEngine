@@ -1,5 +1,10 @@
+using Azure.Core.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.Json;
 using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine.Pages
@@ -10,6 +15,10 @@ namespace TelegramBotEngine.Pages
         private readonly TelegramBotEngineDbContext _db;
         private string ErrorMessage { get; set; } = string.Empty;
         public List<Bot> Bots { get; set; } = new List<Bot>();
+
+        [Display(Name = "ImagesInfList.json path")]
+        [BindProperty]
+        public IFormFile? MemsInfoFile { get; set; }
 
         public IndexModel(ILogger<IndexModel> logger, TelegramBotEngineDbContext db)
         {
@@ -112,6 +121,59 @@ namespace TelegramBotEngine.Pages
                 ErrorMessage = string.Concat("Bot stop failed. Bot not found. Id: ", id);
             }
 
+            return RedirectToNextPage();
+        }
+
+        public async Task<IActionResult> OnPostUploadMemsInfo()
+        {
+            if (MemsInfoFile == null)
+            {
+                ErrorMessage = "The file cannot be null";
+                return RedirectToNextPage();
+            }
+            
+            var extension = Path.GetExtension(MemsInfoFile.FileName).ToLowerInvariant();
+
+            if (extension != ".json")
+            {
+                ErrorMessage = "The file must be in .json format.";
+                return RedirectToNextPage();
+            }
+
+            try
+            {
+                using var stream = new MemoryStream();
+
+                await MemsInfoFile.CopyToAsync(stream);
+                stream.Position = 0;
+
+                var jsonContent = Encoding.UTF8.GetString(stream.ToArray());
+                var imagesInfList = JsonSerializer.Deserialize<List<Mem>>(jsonContent);
+
+                if (imagesInfList != null && imagesInfList.Count > 0)
+                {
+                    foreach (Mem imageInf in imagesInfList)
+                    {
+                        var imageInfInDb = await _db.Mems.FirstOrDefaultAsync(im => im.Url == imageInf.Url);
+
+                        if (imageInfInDb == null)
+                        {
+                            _db.Mems.Add(new Mem{Url = imageInf.Url});
+                        }
+                    }
+
+                    _db.SaveChanges();
+                }
+            }
+            catch (JsonException ex)
+            {
+                ErrorMessage = $"Error reading JSON: {ex.Message}";
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Loading error: {ex.Message}";
+            }
+            
             return RedirectToNextPage();
         }
 

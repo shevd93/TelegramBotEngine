@@ -13,7 +13,14 @@
 
         public static string[] HandlersTypeNames()
         {
-            return new string[] { "Menu", "Quiz", "CheckingAMessageForToxicity", "RequestToAI" };
+            return new string[] 
+            { 
+                "Menu", 
+                "Quiz", 
+                "CheckingAMessageForToxicity", 
+                "RequestToAI",
+                "RandoomMem"
+            };
         }
     }
 }

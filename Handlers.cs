@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
 using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
 using TelegramBotEngine.Models;
@@ -437,6 +436,20 @@ namespace TelegramBotEngine
                     catch (Exception ex)
                     {
                         logger.LogError(ex, "Error sending quiz for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                    }
+                }
+                
+                // --RandoomMem--
+
+                if (handler.Type == "RandoomMem" && message.Text.Contains(externalid))
+                {
+                    try
+                    {
+                        await TelegramExtension.SendImage(chat.ExternalId, client, "https://www.nvcdn.memify.ru/media/rftHkYZvzFhflqzlOu8cDw/20251226/5364223018529394670.jpg");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error sending randoom mem for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
                     }
                 }
 
