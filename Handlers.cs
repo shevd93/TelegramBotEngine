@@ -439,17 +439,41 @@ namespace TelegramBotEngine
                     }
                 }
                 
-                // --RandoomMem--
+                // --RandomMem--
 
-                if (handler.Type == "RandoomMem" && message.Text.Contains(externalid))
+                if (handler.Type == "RandomMem" && message.Text.Contains(externalid))
                 {
                     try
                     {
-                        await TelegramExtension.SendImage(chat.ExternalId, client, "https://www.nvcdn.memify.ru/media/rftHkYZvzFhflqzlOu8cDw/20251226/5364223018529394670.jpg");
+                        var count = await db.Mems.CountAsync();
+                            
+                        if (count > 0)
+                        {
+                            var random = new Random();
+                            var index = random.Next(0, count);
+
+                            var mem = await db.Mems
+                                .Skip(index)
+                                .FirstOrDefaultAsync();
+                            
+                            if (mem != null)
+                            {
+                                await TelegramExtension.SendImage(chat.ExternalId, client, mem.Url);
+                            }
+                            {
+                                logger.LogError("Failed to get meme from table");
+                            }
+                        }
+                        else
+                        {
+                            //await TelegramExtension.SendMessage(chat.ExternalId, "Mems not found(", client);
+                            await TelegramExtension.SendMessage(chat.ExternalId, "Нет мемов(", client);
+                            logger.LogInformation("The meme table is empty");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Error sending randoom mem for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                        logger.LogError(ex, "Error sending random mem for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
                     }
                 }
 

@@ -19,7 +19,7 @@
                 "Quiz", 
                 "CheckingAMessageForToxicity", 
                 "RequestToAI",
-                "RandoomMem"
+                "RandomMem"
             };
         }
     }
