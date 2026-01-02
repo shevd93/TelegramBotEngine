@@ -163,6 +163,8 @@ namespace TelegramBotEngine.Pages
 
                     _db.SaveChanges();
                 }
+
+                TempData["SuccessMessage"] = "File uploaded successfully!";
             }
             catch (JsonException ex)
             {
