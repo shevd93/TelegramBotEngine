@@ -12,7 +12,6 @@ builder.Services.AddRazorPages();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueCountLimit = 10000;
-    //options.MultipartBodyLengthLimit = 
 });
 
 var app = builder.Build();
