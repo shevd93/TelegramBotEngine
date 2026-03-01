@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TelegramBotEngine.Models;
+using TelegramBotEngine.Pages;
 
 namespace TelegramBotEngine
 {
@@ -18,6 +19,8 @@ namespace TelegramBotEngine
         public DbSet<ToxicUser> ToxicUsers => Set<ToxicUser>();
         public DbSet<KPI> KPIs => Set<KPI>();
         public DbSet<Mem> Mems => Set<Mem>();
+        public DbSet<SongPerformer> PerformersOfSongs => Set<SongPerformer>();
+        public DbSet<Lyrics> Lyrics => Set<Lyrics>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -29,6 +32,8 @@ namespace TelegramBotEngine
             modelBuilder.Entity<Handler>().HasIndex(h => new { h.ExternalId, h.BotId });
             modelBuilder.Entity<ToxicUser>().HasIndex(tu => new { tu.FromUserId, tu.ChatId });
             modelBuilder.Entity<KPI>().HasIndex(k => new { k.FromUserId, k.ChatId });
+            modelBuilder.Entity<SongPerformer>().HasIndex(s => new {s.Id});
+            modelBuilder.Entity<Lyrics>().HasIndex(l => new {l.Id});
 
             base.OnModelCreating(modelBuilder);
         }

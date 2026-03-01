@@ -42,6 +42,50 @@ namespace TelegramBotEngine
             return (deepSeekResponse.StatusCode == HttpStatusCode.OK && deepSeekResponse.Content.Contains("YES"));
         }
 
+        public static async Task<string> MusicQuiz(string apiKey)
+        {
+            var text = @"Сгенерируй ОДИН вопрос для квиза о музыке.
+                        Доступные жанры:
+                        - Поп-музыка 1990–2020-х, Инди / альтернатива / новая сцена / рок
+                        ФОРМАТ ВЫВОДА — ТОЛЬКО JSON:
+                        {
+                          ""question"": ""Текст вопроса..."",
+                          ""options"": [""Вариант А"", ""Вариант Б"", ""Вариант В"", ""Вариант Г"", ""Вариант Д""],
+                          ""answer_index"": 0,
+                          ""fact"": ""Пояснение: ... Источник: интервью / мемуары / техпаспорт / статья.""
+                        }
+                        Никакого другого текста.";
+
+            var role = @"Ты — музыкальный историк и редактор квизов.
+                        Твоя специализация: популярная музыка XX–XXI веков — поп-музыка 1990–2020-х, инди-сцена, рок.
+                        ПРАВИЛА:
+                        1. Ты генерируешь ТОЛЬКО ОДИН вопрос за один вызов.
+                        2. Каждый вопрос — строго про ФАКТЫ, а не вкусовщину:
+                           — даты, имена, инструменты, студии, инциденты, продюсеры, авторы, обложки, клипы, семплы, суды, рекорды.
+                        3. 5 вариантов ответа. Только один правильный.
+                        4. Правильный ответ — неочевидный, но верифицируемый.
+                        5. Дистракторы — правдоподобные ошибки: реальные люди/группы/песни, которые НЕ относятся к событию.
+                        6. Категорически избегать:
+                           — клише («великий», «легендарный», «культовый», «голос поколения»),
+                           — оценочных суждений,
+                           — абстрактных рассуждений.
+                        7. Формат вывода: строго валидный JSON.
+                        8. Никакого текста до и после JSON.";
+
+            try
+            {
+                var deepSeekResponse = await SendRequest(apiKey, text, role);
+                var json = deepSeekResponse.Content.Replace("`", "");
+                json = json.Replace("JSON", "");
+
+                return json;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
         public static async Task<DeepSeekResponse> SendRequest(string apiKey, string message, string role = "You are a helpful assistant.")
         {
             using var httpClient = new HttpClient();

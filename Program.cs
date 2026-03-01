@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using TelegramBotEngine;
 
@@ -8,6 +9,11 @@ builder.Services.AddDbContext<TelegramBotEngineDbContext>(options =>
 
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddRazorPages();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueCountLimit = 10000;
+    //options.MultipartBodyLengthLimit = 
+});
 
 var app = builder.Build();
 

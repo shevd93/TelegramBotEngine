@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Telegram.BotAPI;
 using Telegram.BotAPI.GettingUpdates;
 using TelegramBotEngine.Models;
+using TelegramBotEngine.Pages;
 
 namespace TelegramBotEngine
 {
@@ -425,17 +427,52 @@ namespace TelegramBotEngine
                     }
                 }
 
-                // --Quiz--
+                // --MusicQuiz--
 
-                if (handler.Type == "Quiz" && message.Text.Contains(externalid))
+                if (handler.Type == "MuzicQuiz" && message.Text.Contains(externalid))
                 {
-                    try
+                    bool useDeepSeek = false;
+
+                    if (useDeepSeek)
                     {
-                        await TelegramExtension.SendQuiz(chat.ExternalId, client);
+                        try
+                        {
+                            var musicQuizJson = await DeepSeekExtension.MusicQuiz(bot.DeepSeekApiKey);
+
+                            if (musicQuizJson != "")
+                            {
+                                await TelegramExtension.SendQuizDeepSeek(chat.ExternalId, client, musicQuizJson);
+                            }
+                            else
+                            {
+                                logger.LogError("Error sending music quiz for Bot {BotId}, Chat {ChatId}. Error receiving deep seek quiz. Message {MessageId}", bot.Id, chat.Id, message.Id);
+                            }
+
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Error sending deep seek music quiz for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                        }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        logger.LogError(ex, "Error sending quiz for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                        try
+                        {
+                            var musicQuiz = await QuizExtension.MusicQuiz(db);
+
+                            if (!string.IsNullOrEmpty(musicQuiz.Question))
+                            {
+                                await TelegramExtension.SendQuiz(chat.ExternalId, client, musicQuiz);
+                            }
+
+                            return;
+
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Error sending music quiz for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                        }
                     }
                 }
                 
@@ -524,7 +561,7 @@ namespace TelegramBotEngine
                         username = toxicUser.FromUser!.FirstName ?? "Неопознанный пользователь";
                     }
 
-                    topList = string.Concat(topList, $"{top}. @{username}: {toxicUser.Score}\n");
+                    topList = string.Concat(topList, $"{top}. {username}: {toxicUser.Score}\n");
                 }
 
                 try
@@ -570,7 +607,7 @@ namespace TelegramBotEngine
                         username = KPI.FromUser!.FirstName ?? "Неопознанный пользователь";
                     }
 
-                    topList = string.Concat(topList, $"{top}. @{username}: {KPI.Score}\n");
+                    topList = string.Concat(topList, $"{top}. {username}: {KPI.Score}\n");
                 }
 
                 try

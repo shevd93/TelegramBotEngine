@@ -2,6 +2,7 @@
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using Telegram.BotAPI.AvailableTypes;
+using TelegramBotEngine.Models;
 
 namespace TelegramBotEngine
 {
@@ -34,20 +35,46 @@ namespace TelegramBotEngine
                 parseMode: "HTML");
         }
 
-        public static async Task SendQuiz(long chatId, TelegramBotClient client)
+        public static async Task SendQuizDeepSeek(long chatId, TelegramBotClient client, string quizTextJson)
         {
+            var question = JsonSerializer.Deserialize<MusicQuizQuestion>(quizTextJson);
+                
             var poll = new SendPollArgs(
                 chatId,
-                "1+1?",
+                question.Question,
                 [
-                    new InputPollOption("2"),
-                    new InputPollOption("3"),
-                    new InputPollOption("4")
+                    new InputPollOption(question.Options[0]),
+                    new InputPollOption(question.Options[1]),
+                    new InputPollOption(question.Options[2]),
+                    new InputPollOption(question.Options[3]),
+                    new InputPollOption(question.Options[4])
                 ]
             )
             {
                 Type = "quiz",
-                CorrectOptionId = 0,
+                CorrectOptionId = question.AnswerIndex,
+                IsAnonymous = false
+            };
+
+            await client.SendPollAsync( poll );
+        }
+
+        public static async Task SendQuiz(long chatId, TelegramBotClient client, MusicQuizQuestion musicQuiz)
+        {
+            var poll = new SendPollArgs(
+                chatId,
+                musicQuiz.Question,
+                [
+                    new InputPollOption(musicQuiz.Options[0]),
+                    new InputPollOption(musicQuiz.Options[1]),
+                    new InputPollOption(musicQuiz.Options[2]),
+                    new InputPollOption(musicQuiz.Options[3]),
+                    new InputPollOption(musicQuiz.Options[4])
+                ]
+            )
+            {
+                Type = "quiz",
+                CorrectOptionId = musicQuiz.AnswerIndex,
                 IsAnonymous = false
             };
 

@@ -18,6 +18,9 @@ namespace TelegramBotEngine.Pages
         [Display(Name = "ImagesInfList.json path")]
         [BindProperty]
         public IFormFile? MemsInfoFile { get; set; }
+        
+        [BindProperty]
+        public List<IFormFile> Lyrics {  get; set; } = new List<IFormFile>();
 
         public IndexModel(ILogger<IndexModel> logger, TelegramBotEngineDbContext db)
         {
@@ -127,7 +130,7 @@ namespace TelegramBotEngine.Pages
         {
             if (MemsInfoFile == null)
             {
-                ErrorMessage = "The file cannot be null";
+                ErrorMessage = "File not selected.";
                 return RedirectToNextPage();
             }
             
@@ -161,7 +164,7 @@ namespace TelegramBotEngine.Pages
                         }
                     }
 
-                    _db.SaveChanges();
+                    await _db.SaveChangesAsync();
                 }
 
                 TempData["SuccessMessage"] = "File uploaded successfully!";
@@ -175,6 +178,94 @@ namespace TelegramBotEngine.Pages
                 ErrorMessage = $"Loading error: {ex.Message}";
             }
             
+            return RedirectToNextPage();
+        }
+
+        public async Task<IActionResult> OnPostUploadLyricsAsync()
+        {
+            if (Lyrics == null || Lyrics.Count == 0)
+            {
+                ErrorMessage = "Please select a folder with lyrics.";
+                return RedirectToNextPage();
+            }
+
+            var root = Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "UploadedLyrics");
+
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+
+            Directory.CreateDirectory(root);
+
+            foreach (var file in Lyrics)
+            {
+                var relativePath = file.FileName.Replace('\\', '/');
+
+                relativePath = relativePath.TrimStart('/');
+
+                if (relativePath.Contains(".."))
+                {
+                    continue;
+                }
+
+                var savePath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                
+                Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+
+                await using var fs = System.IO.File.Create(savePath);
+                await file.CopyToAsync(fs);
+            }
+
+            foreach (var patch in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(root, patch);
+                var ext = Path.GetExtension(patch).ToLowerInvariant();
+                var performer = new DirectoryInfo(Path.GetDirectoryName(relative)!).Name;
+                var title = Path.GetFileNameWithoutExtension(relative);
+
+                var performerInDb = await _db.PerformersOfSongs.FirstOrDefaultAsync(ps => ps.Name == performer);
+              
+                Guid performerId;
+
+                if (performerInDb == null)
+                {
+                    performerId = Guid.NewGuid();
+                    _db.PerformersOfSongs.Add(new SongPerformer {Name = performer, Id = performerId});
+                    await _db.SaveChangesAsync();
+                }
+                else
+                {
+                    performerId = performerInDb.Id;
+                }
+
+                if (ext != ".txt")
+                {
+                    continue;
+                }
+
+                var songInDb = await _db.Lyrics.FirstOrDefaultAsync(s => s.PerformerId == performerId && s.Title == title);
+
+                if (songInDb != null)
+                {
+                    continue;
+                }
+
+                var text = await System.IO.File.ReadAllTextAsync(patch);
+
+                text = string.Join(
+                    Environment.NewLine,
+                    text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+                    .Where(line => !string.IsNullOrWhiteSpace(line)));
+
+                _db.Lyrics.Add(new Lyrics { PerformerId = performerId, Text = text, Title = title});
+                await _db.SaveChangesAsync();
+            }
+
+            Directory.Delete(root, true);
+
+            TempData["SuccessMessage"] = "File uploaded successfully!";
+
             return RedirectToNextPage();
         }
 

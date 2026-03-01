@@ -16,7 +16,7 @@
             return new string[] 
             { 
                 "Menu", 
-                "Quiz", 
+                "MuzicQuiz", 
                 "CheckingAMessageForToxicity", 
                 "RequestToAI",
                 "RandomMem"
