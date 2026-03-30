@@ -29,7 +29,12 @@ namespace TelegramBotEngine.Pages
             var firstFourLines = string.Join(
                 Environment.NewLine,
                 song.Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
-                    .Take(4));
+                    .Take(8));
+
+            if (firstFourLines.Length > 250)
+            {
+                firstFourLines = firstFourLines.Substring(0, 250);
+            }
 
             var performer = await db.PerformersOfSongs.FirstOrDefaultAsync(pe => pe.Id == song.PerformerId);
 
