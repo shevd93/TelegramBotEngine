@@ -514,6 +514,20 @@ namespace TelegramBotEngine
                     }
                 }
 
+                // --App--
+
+                if (handler.Type == "App" && handler.Name == message.Text)
+                {
+                    try
+                    {
+                        await TelegramExtension.SendMessage(chat.ExternalId, handler.AppLink ?? "", client);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error sending app link for Bot {BotId}, Chat {ChatId}, Message {MessageId}", bot.Id, chat.Id, message.Id);
+                    }
+                }
+
                 // ----
             }
 
