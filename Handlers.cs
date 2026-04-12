@@ -516,7 +516,7 @@ namespace TelegramBotEngine
 
                 // --App--
 
-                if (handler.Type == "App" && handler.Name == message.Text)
+                if (handler.Type == "App" && message.Text.Contains(handler.Name))
                 {
                     try
                     {

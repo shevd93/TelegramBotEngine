@@ -62,6 +62,7 @@ namespace TelegramBotEngine.Pages
         { 
             Handler.Code = Handler.Code ?? "";
             Handler.Text = Handler.Text ?? "";
+            Handler.AppLink = Handler.AppLink ?? "";
 
             _db.Handlers.Add(Handler);
 
